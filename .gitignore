@@ -1,0 +1,7 @@
+# Build artifacts
+build/
+
+# IDE-specific files
+.slick/
+/Testing/
+/docs/help/

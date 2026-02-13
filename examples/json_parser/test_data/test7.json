@@ -1,0 +1,14 @@
+{
+  "name": "Test Object",
+  "version": 1.0,
+  "isActive": true,
+  "details": {
+    "id": "abc-123",
+    "tags": ["alpha", "beta", "gamma"],
+    "settings": null
+  },
+  "list": [
+    {"item": 1},
+    {"item": 2, "sub_item": "test"}
+  ]
+}
