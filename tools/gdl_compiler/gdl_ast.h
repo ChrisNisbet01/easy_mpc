@@ -11,7 +11,6 @@ extern "C"
 // Define GDL-specific AST semantic actions
 typedef enum epc_ast_user_defined_action_gdl
 {
-    GDL_AST_ACTION_NONE = 0,
     GDL_AST_ACTION_CREATE_PROGRAM,
     GDL_AST_ACTION_CREATE_RULE_DEFINITION,
     GDL_AST_ACTION_CREATE_IDENTIFIER_REF,
@@ -43,12 +42,12 @@ typedef enum epc_ast_user_defined_action_gdl
     GDL_AST_ACTION_CREATE_KEYWORD,
     GDL_AST_ACTION_CREATE_TERMINAL,
     GDL_AST_ACTION_CREATE_FAIL_CALL,
+    GDL_AST_ACTION_MAX,
 } epc_ast_user_defined_action_gdl;
 
 // GDL AST Node Types
 typedef enum
 {
-    GDL_AST_NODE_TYPE_NONE,
     GDL_AST_NODE_TYPE_PLACEHOLDER, // New placeholder node type
     GDL_AST_NODE_TYPE_PROGRAM,
     GDL_AST_NODE_TYPE_RULE_DEFINITION,
@@ -261,8 +260,7 @@ struct gdl_ast_node_t
 };
 
 // Functions to create AST nodes
-gdl_ast_node_t * gdl_ast_node_create(gdl_ast_node_type_t type);
-void gdl_ast_node_free(gdl_ast_node_t * node);
+void gdl_ast_node_free(void * node, void * user_data);
 
 
 #ifdef __cplusplus

@@ -1,5 +1,5 @@
 #include "gdl_parser.h"
-#include "gdl_ast_builder.h"
+#include "gdl_compiler_ast_actions.h"
 #include "gdl_code_generator.h"
 
 #include <easy_pc/easy_pc.h>
@@ -123,15 +123,6 @@ main(int argc, char ** argv)
     // 2. Parse the input GDL content
     epc_parse_session_t session = epc_parse_input(gdl_grammar_parser, gdl_content);
 
-    // AST Builder setup
-    gdl_ast_builder_data_t ast_builder_data;
-    epc_cpt_visitor_t ast_builder_visitor;
-
-    gdl_ast_builder_init(&ast_builder_data);
-    ast_builder_visitor.enter_node = gdl_ast_builder_enter_node;
-    ast_builder_visitor.exit_node = gdl_ast_builder_exit_node;
-    ast_builder_visitor.user_data = &ast_builder_data;
-
     // 3. Process the result
     if (session.result.is_error)
     {
@@ -147,53 +138,67 @@ main(int argc, char ** argv)
     else
     {
         printf("GDL parsed successfully! Now building AST...\n");
+        // AST Builder setup
+        epc_ast_hook_registry_t * ast_registry =
+            epc_ast_hook_registry_create(GDL_AST_ACTION_MAX);
 
-        // Visit CPT to build AST
-        epc_cpt_visit_nodes(session.result.data.success, &ast_builder_visitor);
-
-        if (ast_builder_data.has_error)
+        if (ast_registry == NULL)
         {
-            fprintf(stderr, "GDL AST Building Error: %s\n", ast_builder_data.error_message);
+            fprintf(stderr, "Error: Failed to create AST hook registry.\n");
             exit_code = EXIT_FAILURE;
         }
         else
         {
-            printf("GDL AST built successfully!\n");
+            gdl_ast_hook_registry_init(ast_registry, NULL); // No specific user_data needed
 
-            // Call the C code generator
-            char * gdl_filename = strrchr(gdl_filepath, '/');
-            if (gdl_filename)
-            {
-                gdl_filename++;
-            }
-            else
-            {
-                gdl_filename = (char *)gdl_filepath;
-            }
-            char base_name[256];
-            strncpy(base_name, gdl_filename, sizeof(base_name) - 1);
-            base_name[sizeof(base_name) - 1] = '\0';
+            epc_ast_result_t ast_build_result =
+                epc_ast_build(session.result.data.success, ast_registry, NULL);
 
-            char * dot = strrchr(base_name, '.');
-            if (dot)
+            if (ast_build_result.has_error)
             {
-                *dot = '\0';
-            }
-
-            if (!gdl_generate_c_code(ast_builder_data.ast_root, base_name, output_dir))
-            {
-                fprintf(stderr, "C code generation failed.\n");
+                fprintf(stderr, "GDL AST Building Error: %s\n", ast_build_result.error_message);
                 exit_code = EXIT_FAILURE;
             }
             else
             {
-                printf("C code generation completed successfully.\n");
+                printf("GDL AST built successfully!\n");
+
+                // Call the C code generator
+                char * gdl_filename = strrchr(gdl_filepath, '/');
+                if (gdl_filename)
+                {
+                    gdl_filename++;
+                }
+                else
+                {
+                    gdl_filename = (char *)gdl_filepath;
+                }
+                char base_name[256];
+                strncpy(base_name, gdl_filename, sizeof(base_name) - 1);
+                base_name[sizeof(base_name) - 1] = '\0';
+
+                char * dot = strrchr(base_name, '.');
+                if (dot)
+                {
+                    *dot = '\0';
+                }
+
+                if (!gdl_generate_c_code((gdl_ast_node_t *)ast_build_result.ast_root, base_name, output_dir))
+                {
+                    fprintf(stderr, "C code generation failed.\n");
+                    exit_code = EXIT_FAILURE;
+                }
+                else
+                {
+                    printf("C code generation completed successfully.\n");
+                }
+                gdl_ast_node_free((gdl_ast_node_t *)ast_build_result.ast_root, NULL);
             }
         }
+        epc_ast_hook_registry_free(ast_registry);
     }
 
     // 4. Cleanup
-    gdl_ast_builder_cleanup(&ast_builder_data);
     epc_parse_session_destroy(&session);
     epc_parser_list_free(gdl_parser_list);
     free(gdl_content);

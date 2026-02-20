@@ -3,7 +3,7 @@
 
 extern "C" {
 #include "gdl_parser.h"
-#include "gdl_ast_builder.h"
+#include "gdl_compiler_ast_actions.h"
 }
 
 #include <string.h>
@@ -14,25 +14,22 @@ TEST_GROUP(GdlAstBuilderTest)
     epc_parser_list *parser_list;
     epc_parser_t *gdl_grammar;
     epc_parse_session_t session;
-    gdl_ast_builder_data_t ast_builder_data;
-    epc_cpt_visitor_t ast_builder_visitor;
+    epc_ast_hook_registry_t * ast_registry = NULL;
+    epc_ast_result_t ast_build_result = {0};
 
     void setup() override
     {
         parser_list = epc_parser_list_create();
         gdl_grammar = create_gdl_parser(parser_list);
-
-        gdl_ast_builder_init(&ast_builder_data);
-        ast_builder_visitor.enter_node = gdl_ast_builder_enter_node;
-        ast_builder_visitor.exit_node = gdl_ast_builder_exit_node;
-        ast_builder_visitor.user_data = &ast_builder_data;
+        ast_registry = epc_ast_hook_registry_create(GDL_AST_ACTION_MAX);
+        gdl_ast_hook_registry_init(ast_registry, NULL); // No specific user_data needed
     }
 
     void teardown() override
     {
         epc_parse_session_destroy(&session);
         epc_parser_list_free(parser_list);
-        gdl_ast_builder_cleanup(&ast_builder_data);
+        epc_ast_hook_registry_free(ast_registry);
     }
 };
 
@@ -42,11 +39,12 @@ TEST(GdlAstBuilderTest, SimpleRuleStringLiteral)
     session = epc_parse_input(gdl_grammar, gdl_input);
 
     CHECK_FALSE(session.result.is_error);
-    epc_cpt_visit_nodes(session.result.data.success, &ast_builder_visitor);
+    ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);
 
-    CHECK_FALSE(ast_builder_data.has_error);
-    CHECK(ast_builder_data.ast_root != NULL);
-    LONGS_EQUAL(GDL_AST_NODE_TYPE_PROGRAM, ast_builder_data.ast_root->type);
+    CHECK_FALSE(ast_build_result.has_error);
+    CHECK(ast_build_result.ast_root != NULL);
+    gdl_ast_node_t * ast_root = (gdl_ast_node_t *)ast_build_result.ast_root;
+    LONGS_EQUAL(GDL_AST_NODE_TYPE_PROGRAM, ast_root->type);
 
     // Further assertions can be added here to check the structure of the AST
     // For now, just checking root and no errors
@@ -58,13 +56,14 @@ TEST(GdlAstBuilderTest, RuleDefinitionWithCharRange)
     session = epc_parse_input(gdl_grammar, gdl_input);
 
     CHECK_FALSE(session.result.is_error);
-    epc_cpt_visit_nodes(session.result.data.success, &ast_builder_visitor);
+    ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);
 
-    CHECK_FALSE(ast_builder_data.has_error);
-    CHECK(ast_builder_data.ast_root != NULL);
-    LONGS_EQUAL(GDL_AST_NODE_TYPE_PROGRAM, ast_builder_data.ast_root->type);
+    CHECK_FALSE(ast_build_result.has_error);
+    CHECK(ast_build_result.ast_root != NULL);
+    gdl_ast_node_t * ast_root = (gdl_ast_node_t *)ast_build_result.ast_root;
+    LONGS_EQUAL(GDL_AST_NODE_TYPE_PROGRAM, ast_root->type);
 
-    gdl_ast_node_t *program_node = ast_builder_data.ast_root;
+    gdl_ast_node_t *program_node = (gdl_ast_node_t *)ast_build_result.ast_root;
     CHECK(program_node->data.program.rules.count == 1);
 
     gdl_ast_list_node_t *rule_list_node = program_node->data.program.rules.head;
@@ -94,13 +93,14 @@ TEST(GdlAstBuilderTest, RuleDefinitionWithSemanticAction)
     session = epc_parse_input(gdl_grammar, gdl_input);
 
     CHECK_FALSE(session.result.is_error);
-    epc_cpt_visit_nodes(session.result.data.success, &ast_builder_visitor);
+    ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);
 
-    CHECK_FALSE(ast_builder_data.has_error);
-    CHECK(ast_builder_data.ast_root != NULL);
-    LONGS_EQUAL(GDL_AST_NODE_TYPE_PROGRAM, ast_builder_data.ast_root->type);
+    CHECK_FALSE(ast_build_result.has_error);
+    CHECK(ast_build_result.ast_root != NULL);
+    gdl_ast_node_t * ast_root = (gdl_ast_node_t *)ast_build_result.ast_root;
+    LONGS_EQUAL(GDL_AST_NODE_TYPE_PROGRAM, ast_root->type);
 
-    gdl_ast_node_t *program_node = ast_builder_data.ast_root;
+    gdl_ast_node_t *program_node = (gdl_ast_node_t *)ast_build_result.ast_root;
     CHECK(program_node->data.program.rules.count == 1);
 
     gdl_ast_list_node_t *rule_list_node = program_node->data.program.rules.head;
@@ -137,13 +137,14 @@ TEST(GdlAstBuilderTest, RuleDefinitionWithSequence)
     session = epc_parse_input(gdl_grammar, gdl_input);
 
     CHECK_FALSE(session.result.is_error);
-    epc_cpt_visit_nodes(session.result.data.success, &ast_builder_visitor);
+    ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);
 
-    CHECK_FALSE(ast_builder_data.has_error);
-    CHECK(ast_builder_data.ast_root != NULL);
-    LONGS_EQUAL(GDL_AST_NODE_TYPE_PROGRAM, ast_builder_data.ast_root->type);
+    CHECK_FALSE(ast_build_result.has_error);
+    CHECK(ast_build_result.ast_root != NULL);
+    gdl_ast_node_t * ast_root = (gdl_ast_node_t *)ast_build_result.ast_root;
+    LONGS_EQUAL(GDL_AST_NODE_TYPE_PROGRAM, ast_root->type);
 
-    gdl_ast_node_t *program_node = ast_builder_data.ast_root;
+    gdl_ast_node_t *program_node = (gdl_ast_node_t *)ast_build_result.ast_root;
     CHECK(program_node->data.program.rules.count == 1);
 
     gdl_ast_list_node_t *rule_list_node = program_node->data.program.rules.head;
@@ -183,13 +184,14 @@ TEST(GdlAstBuilderTest, RuleDefinitionWithAlternative)
     session = epc_parse_input(gdl_grammar, gdl_input);
 
     CHECK_FALSE(session.result.is_error);
-    epc_cpt_visit_nodes(session.result.data.success, &ast_builder_visitor);
+    ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);
 
-    CHECK_FALSE(ast_builder_data.has_error);
-    CHECK(ast_builder_data.ast_root != NULL);
-    LONGS_EQUAL(GDL_AST_NODE_TYPE_PROGRAM, ast_builder_data.ast_root->type);
+    CHECK_FALSE(ast_build_result.has_error);
+    CHECK(ast_build_result.ast_root != NULL);
+    gdl_ast_node_t * ast_root = (gdl_ast_node_t *)ast_build_result.ast_root;
+    LONGS_EQUAL(GDL_AST_NODE_TYPE_PROGRAM, ast_root->type);
 
-    gdl_ast_node_t *program_node = ast_builder_data.ast_root;
+    gdl_ast_node_t *program_node = (gdl_ast_node_t *)ast_build_result.ast_root;
     CHECK(program_node->data.program.rules.count == 1);
 
     gdl_ast_list_node_t *rule_list_node = program_node->data.program.rules.head;
@@ -228,13 +230,14 @@ TEST(GdlAstBuilderTest, RuleDefinitionWithRepetition)
     session = epc_parse_input(gdl_grammar, gdl_input);
 
     CHECK_FALSE(session.result.is_error);
-    epc_cpt_visit_nodes(session.result.data.success, &ast_builder_visitor);
+    ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);
 
-    CHECK_FALSE(ast_builder_data.has_error);
-    CHECK(ast_builder_data.ast_root != NULL);
-    LONGS_EQUAL(GDL_AST_NODE_TYPE_PROGRAM, ast_builder_data.ast_root->type);
+    CHECK_FALSE(ast_build_result.has_error);
+    CHECK(ast_build_result.ast_root != NULL);
+    gdl_ast_node_t * ast_root = (gdl_ast_node_t *)ast_build_result.ast_root;
+    LONGS_EQUAL(GDL_AST_NODE_TYPE_PROGRAM, ast_root->type);
 
-    gdl_ast_node_t *program_node = ast_builder_data.ast_root;
+    gdl_ast_node_t *program_node = (gdl_ast_node_t *)ast_build_result.ast_root;
     CHECK(program_node->data.program.rules.count == 1);
 
     gdl_ast_list_node_t *rule_list_node = program_node->data.program.rules.head;
@@ -272,13 +275,14 @@ TEST(GdlAstBuilderTest, RuleDefinitionWithComplexOptional)
     session = epc_parse_input(gdl_grammar, gdl_input);
 
     CHECK_FALSE(session.result.is_error);
-    epc_cpt_visit_nodes(session.result.data.success, &ast_builder_visitor);
+    ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);
 
-    CHECK_FALSE(ast_builder_data.has_error);
-    CHECK(ast_builder_data.ast_root != NULL);
-    LONGS_EQUAL(GDL_AST_NODE_TYPE_PROGRAM, ast_builder_data.ast_root->type);
+    CHECK_FALSE(ast_build_result.has_error);
+    CHECK(ast_build_result.ast_root != NULL);
+    gdl_ast_node_t * ast_root = (gdl_ast_node_t *)ast_build_result.ast_root;
+    LONGS_EQUAL(GDL_AST_NODE_TYPE_PROGRAM, ast_root->type);
 
-    gdl_ast_node_t *program_node = ast_builder_data.ast_root;
+    gdl_ast_node_t *program_node = (gdl_ast_node_t *)ast_build_result.ast_root;
     CHECK(program_node->data.program.rules.count == 1);
 
     gdl_ast_list_node_t *rule_list_node = program_node->data.program.rules.head;
@@ -337,13 +341,14 @@ TEST(GdlAstBuilderTest, RuleDefinitionWithOptionalAbsent)
     session = epc_parse_input(gdl_grammar, gdl_input);
 
     CHECK_FALSE(session.result.is_error);
-    epc_cpt_visit_nodes(session.result.data.success, &ast_builder_visitor);
+    ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);
 
-    CHECK_FALSE(ast_builder_data.has_error);
-    CHECK(ast_builder_data.ast_root != NULL);
-    LONGS_EQUAL(GDL_AST_NODE_TYPE_PROGRAM, ast_builder_data.ast_root->type);
+    CHECK_FALSE(ast_build_result.has_error);
+    CHECK(ast_build_result.ast_root != NULL);
+    gdl_ast_node_t * ast_root = (gdl_ast_node_t *)ast_build_result.ast_root;
+    LONGS_EQUAL(GDL_AST_NODE_TYPE_PROGRAM, ast_root->type);
 
-    gdl_ast_node_t *program_node = ast_builder_data.ast_root;
+    gdl_ast_node_t *program_node = (gdl_ast_node_t *)ast_build_result.ast_root;
     CHECK(program_node->data.program.rules.count == 1);
 
     gdl_ast_list_node_t *rule_list_node = program_node->data.program.rules.head;
@@ -380,5 +385,4 @@ TEST(GdlAstBuilderTest, RuleDefinitionWithOptionalAbsent)
     LONGS_EQUAL('a', char_literal_node_in_optional->data.char_literal.value);
 }
 #endif
-
 

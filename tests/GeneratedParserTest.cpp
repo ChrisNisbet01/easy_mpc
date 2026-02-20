@@ -3,7 +3,7 @@
 
 extern "C" {
 #include "gdl_parser.h"
-#include "gdl_ast_builder.h"
+#include "gdl_compiler_ast_actions.h"
 #include "gdl_code_generator.h"
 }
 
@@ -16,7 +16,8 @@ TEST_GROUP(GeneratedParserTest)
     epc_parser_list *parser_list;
     epc_parser_t *gdl_grammar;
     epc_parse_session_t session;
-    gdl_ast_builder_data_t ast_builder_data;
+    epc_ast_hook_registry_t * ast_registry = NULL;
+    epc_ast_result_t ast_build_result = {0};
 
     void setup() override
     {
@@ -24,29 +25,25 @@ TEST_GROUP(GeneratedParserTest)
         system("rm -f simple_test_language.h simple_test_language.c simple_test_language_actions.h");
         parser_list = epc_parser_list_create();
         gdl_grammar = create_gdl_parser(parser_list);
-
-        gdl_ast_builder_init(&ast_builder_data);
+        ast_registry = epc_ast_hook_registry_create(GDL_AST_ACTION_MAX);
+        gdl_ast_hook_registry_init(ast_registry, NULL); // No specific user_data needed
     }
 
     void generate_ast(char const * gdl_input)
     {
-        epc_cpt_visitor_t ast_builder_visitor = {
-            .enter_node = gdl_ast_builder_enter_node,
-            .exit_node = gdl_ast_builder_exit_node,
-            .user_data = &ast_builder_data
-        };
         session = epc_parse_input(gdl_grammar, gdl_input);
         CHECK_FALSE(session.result.is_error);
-        epc_cpt_visit_nodes(session.result.data.success, &ast_builder_visitor);
-        CHECK_FALSE(ast_builder_data.has_error);
-        CHECK(ast_builder_data.ast_root != NULL);
+        ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);
+
+        CHECK_FALSE(ast_build_result.has_error);
+        CHECK(ast_build_result.ast_root != NULL);
     }
 
     void teardown() override
     {
         epc_parse_session_destroy(&session);
         epc_parser_list_free(parser_list);
-        gdl_ast_builder_cleanup(&ast_builder_data);
+        epc_ast_hook_registry_free(ast_registry);
         // Clean up generated files
         // system("rm -f simple_test_language.h simple_test_language.c simple_test_language_actions.h");
     }
@@ -72,7 +69,7 @@ TEST(GeneratedParserTest, GeneratesFilesSuccessfully)
 
     generate_ast(gdl_input);
 
-    CHECK_TRUE(gdl_generate_c_code(ast_builder_data.ast_root, base_name, output_dir));
+    CHECK_TRUE(gdl_generate_c_code((gdl_ast_node_t *)ast_build_result.ast_root, base_name, output_dir));
 }
 
 TEST(GeneratedParserTest, GeneratesFilesWithFwdRefSuccessfully)
@@ -95,6 +92,6 @@ TEST(GeneratedParserTest, GeneratesFilesWithFwdRefSuccessfully)
 
     generate_ast(gdl_input);
 
-    CHECK_TRUE(gdl_generate_c_code(ast_builder_data.ast_root, base_name, output_dir));
+    CHECK_TRUE(gdl_generate_c_code((gdl_ast_node_t *)ast_build_result.ast_root, base_name, output_dir));
 }
 

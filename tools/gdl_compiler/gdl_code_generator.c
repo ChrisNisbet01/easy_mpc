@@ -408,7 +408,6 @@ traverse_expression_for_references(gdl_ast_node_t * expression_node, const gdl_r
     case GDL_AST_NODE_TYPE_PROGRAM: // Should not happen here
     case GDL_AST_NODE_TYPE_RULE_DEFINITION: // Should not happen here
     case GDL_AST_NODE_TYPE_ARGUMENT_LIST: // Should be handled by FUNCTION_CALL
-    case GDL_AST_NODE_TYPE_NONE:
     case GDL_AST_NODE_TYPE_PLACEHOLDER:
         // These nodes do not contain further rule references in this context
         break;

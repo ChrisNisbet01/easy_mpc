@@ -2,7 +2,7 @@
 set(app "gdl_compiler")
 
 # Define the executable for the GDL compiler
-add_executable(${app} main.c gdl_parser.c gdl_ast_builder.c gdl_code_generator.c)
+add_executable(${app} main.c gdl_parser.c gdl_compiler_ast_actions.c gdl_code_generator.c)
 target_compile_options(${app} PRIVATE -Wall -Wextra -pedantic)
 
 # Link the GDL compiler against the easy_pc library
