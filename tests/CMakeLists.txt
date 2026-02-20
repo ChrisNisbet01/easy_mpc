@@ -268,3 +268,24 @@ add_test(
     NAME ArithmeticParserGeneratorTest
     COMMAND ArithmeticParserGeneratorTest
 )
+
+add_executable(AstBuilderTest
+    AllTests.cpp
+    AstBuilderTest.cpp
+)
+
+target_include_directories(AstBuilderTest PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lib
+)
+
+target_link_libraries(AstBuilderTest PRIVATE
+    easy_pc
+    CppUTest
+    CppUTestExt
+)
+
+add_test(
+    NAME AstBuilderTest
+    COMMAND AstBuilderTest
+)
