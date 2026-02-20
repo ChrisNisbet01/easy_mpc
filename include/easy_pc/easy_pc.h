@@ -74,8 +74,10 @@ typedef struct epc_parser_error_t
  */
 typedef struct
 {
-    int action; /**< @brief The identifier for the semantic action to perform.
-                     Concrete values for actions are defined elsewhere (e.g., in ast_builder.h). */
+    bool assigned;   /**< @brief True if a semantic action identifier has been assigned to the node. */
+    int action;      /**< @brief The identifier for the semantic action to perform.
+                      *          Concrete values for actions are defined elsewhere (e.g., in ast_builder.h).
+                      */
 } epc_ast_semantic_action_t;
 
 // The Parse Tree Node

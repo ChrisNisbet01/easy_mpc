@@ -44,6 +44,12 @@ The library focuses on:
     *   Alternatively, for Unix Makefiles:
         `make`
 
+## AST Builder API
+
+The `easy_pc` library includes a powerful and flexible API for transforming Concrete Parse Trees (CPTs) into Abstract Syntax Trees (ASTs). This callback-driven system simplifies memory management and tree traversal, allowing developers to define custom semantic actions for each grammar rule. This approach facilitates the creation of language-specific ASTs suitable for further processing, interpretation, or compilation.
+
+[Learn more about the AST Builder API here.](AST_BUILDER_API.md)
+
 ## Build Options (Examples and Tests)
 
 You can customize the build process using CMake options:

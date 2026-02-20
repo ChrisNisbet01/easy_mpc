@@ -18,7 +18,6 @@ pt_visit_recursive(epc_cpt_node_t * node, epc_cpt_visitor_t * visitor)
     {
         visitor->enter_node(node, visitor->user_data);
     }
-
     for (int i = 0; i < node->children_count; ++i)
     {
         pt_visit_recursive(node->children[i], visitor);
@@ -157,7 +156,6 @@ epc_node_alloc(epc_parser_t * parser, char const * tag)
     epc_cpt_node_t * node = calloc(1, sizeof(*node));
     if (node == NULL)
     {
-        fprintf(stderr, "node alloc failed\n");
         return NULL;
     }
     node->content = ""; /* Make non-NULL. */

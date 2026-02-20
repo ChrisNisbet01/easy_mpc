@@ -2686,9 +2686,11 @@ epc_parser_duplicate(epc_parser_t * const dst, epc_parser_t const * const src)
 void
 epc_parser_set_ast_action(epc_parser_t * p, int action_type)
 {
-    if (p)
+    if (p == NULL)
     {
-        p->ast_config.action = action_type;
+        return;
     }
+    p->ast_config.action = action_type;
+    p->ast_config.assigned = true;
 }
 
