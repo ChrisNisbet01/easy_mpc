@@ -1,4 +1,4 @@
-#include "arithmetic_parser_language.h" // Generated header
+#include "arithmetic_expression.h" // Generated header
 #include <easy_pc/easy_pc.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +21,7 @@ int main(int argc, char ** argv) // Modified signature
         return EXIT_FAILURE;
     }
 
-    epc_parser_t * arithmetic_parser = create_arithmetic_parser_language_parser(parser_list);
+    epc_parser_t * arithmetic_parser = create_arithmetic_expression_parser(parser_list);
 
     if (arithmetic_parser == NULL)
     {
