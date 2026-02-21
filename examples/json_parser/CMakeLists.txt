@@ -2,6 +2,7 @@ set(app "json_parser")
 add_executable(${app} 
   main.c 
   json_grammar.c
+  json_ast_actions.c
 )
 
 target_compile_options(${app} PRIVATE -Wall -Wextra -pedantic -Werror)

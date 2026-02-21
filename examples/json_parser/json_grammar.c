@@ -1,4 +1,5 @@
 #include "json_grammar.h"
+#include "semantic_actions.h"
 
 // Building blocks
 static epc_parser_t *
@@ -106,9 +107,17 @@ create_json_grammar(epc_parser_list * list)
 
     // Get common building block parsers
     epc_parser_t * quoted_string_p = json_quoted_string(list);
+    epc_parser_set_ast_action(quoted_string_p, JSON_ACTION_CREATE_STRING);
+
     epc_parser_t * null_p = json_null(list);
+    epc_parser_set_ast_action(null_p, JSON_ACTION_CREATE_NULL);
+
     epc_parser_t * boolean_p = json_boolean(list);
+    epc_parser_set_ast_action(boolean_p, JSON_ACTION_CREATE_BOOLEAN);
+
     epc_parser_t * number_p = json_number(list);
+    epc_parser_set_ast_action(number_p, JSON_ACTION_CREATE_NUMBER);
+
     epc_parser_t * whitespace_p = json_whitespace(list);
 
     // --- Define Actual JSON Grammar Components using the refs ---
@@ -137,8 +146,10 @@ create_json_grammar(epc_parser_list * list)
 
     epc_parser_t * array_elements =
         epc_delimited_l(list, "array_elements", value_ref, comma_lexeme); // Use value_ref
+    epc_parser_set_ast_action(array_elements, JSON_ACTION_CREATE_ARRAY_ELEMENTS);
 
     epc_parser_t * optional_array_elements = epc_optional_l(list, "optional_elements_in_array", array_elements);
+    epc_parser_set_ast_action(optional_array_elements, JSON_ACTION_CREATE_OPTIONAL_ARRAY_ELEMENTS);
 
     epc_parser_t * json_array_actual =
         epc_and_l(
@@ -147,6 +158,7 @@ create_json_grammar(epc_parser_list * list)
             optional_array_elements,
             close_bracket_lexeme
         );
+    epc_parser_set_ast_action(json_array_actual, JSON_ACTION_CREATE_ARRAY);
 
     // json_object
     epc_parser_t * colon_lexeme = epc_lexeme_l(list, "colon_lexeme", epc_char_l(list, "colon", ':'));
@@ -160,11 +172,14 @@ create_json_grammar(epc_parser_list * list)
             colon_lexeme,
             value_ref // Value (Use value_ref)
         );
+    epc_parser_set_ast_action(member, JSON_ACTION_CREATE_MEMBER);
 
     epc_parser_t * object_elements =
         epc_delimited_l(list, "object_members", member, comma_lexeme);
+    epc_parser_set_ast_action(object_elements, JSON_ACTION_CREATE_OBJECT_ELEMENTS);
 
     epc_parser_t * optional_object_elements = epc_optional_l(list, "optional_elements_in_object", object_elements);
+    epc_parser_set_ast_action(optional_object_elements, JSON_ACTION_CREATE_OPTIONAL_OBJECT_ELEMENTS);
 
     epc_parser_t * json_object_actual =
         epc_and_l(
@@ -173,6 +188,7 @@ create_json_grammar(epc_parser_list * list)
             optional_object_elements,
             close_brace_lexeme
         );
+    epc_parser_set_ast_action(json_object_actual, JSON_ACTION_CREATE_OBJECT);
 
     // 3. Resolve forward references using epc_parser_duplicate
     epc_parser_duplicate(value_ref, json_value_actual);
@@ -180,5 +196,7 @@ create_json_grammar(epc_parser_list * list)
     epc_parser_duplicate(object_ref, json_object_actual);
 
     // The top-level parser for a JSON document is a json_value followed by EOI
-    return epc_and_l(list, "json_document", 2, json_value_actual, epc_eoi_l(list, "end_of_input"));
+    epc_parser_t * top = epc_and_l(list, "json_document", 2, json_value_actual, epc_eoi_l(list, "end_of_input"));
+
+    return top;
 }
