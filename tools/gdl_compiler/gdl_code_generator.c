@@ -987,6 +987,39 @@ generate_expression_code(
         fprintf(source_file, ")");
         break;
 
+    case GDL_AST_NODE_TYPE_COMBINATOR_ONEOF:
+    case GDL_AST_NODE_TYPE_COMBINATOR_NONEOF:
+    {
+        /* Need to build a string to pass to epc_none_of_chars(). */
+        gdl_ast_list_t args = expression_node->data.noneof_call.args;
+        size_t required_len = args.count + 1;
+        char * args_str = malloc(required_len);
+
+        if (args_str == NULL)
+        {
+            return NULL;
+        }
+        gdl_ast_list_node_t * item = args.head;
+        int i;
+        for (i = 0;
+             i < args.count && item != NULL && item->item->type == GDL_AST_NODE_TYPE_CHAR_LITERAL;
+             i++, item = item->next)
+        {
+            args_str[i] = item->item->data.char_literal.value;
+        }
+        args_str[i] = '\0';
+
+        char const * parser_name =
+            (expression_node->type == GDL_AST_NODE_TYPE_COMBINATOR_NONEOF)
+                ? "none_of_chars"
+                : "one_of";
+        fprintf(source_file, "epc_%s_l(list, %s%s%s, \"%s\")",
+                parser_name, q, expr_name, q, args_str);
+
+        free(args_str);
+        break;
+    }
+
         // Handle other AST node types as needed
     default:
         fprintf(stderr, "Error: Unsupported AST node type for code generation: %d\n", expression_node->type);
