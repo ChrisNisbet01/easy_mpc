@@ -1,0 +1,31 @@
+// GDL Definition for JSON Pointer (RFC 6901)
+
+// --- Terminals and Special Characters ---
+Slash = '/';
+Tilde = '~';
+
+// --- Escaped Sequences ---
+// In a JSON Pointer, '~' is the escape character:
+// '~0' represents '~'
+// '~1' represents '/'
+Escaped = Tilde ('0' | '1');
+
+// --- Unescaped Characters ---
+// Any character is allowed except for the special '/' and '~' characters.
+// We use none_of_chars to match any single character NOT in the provided set.
+Unescaped = noneof('/', '~');
+
+// --- Rules ---
+
+// A Reference Token is a sequence of zero or more unescaped characters or escaped sequences.
+// Example: "a~1b" represents the key "a/b"
+ReferenceToken = (Unescaped | Escaped)* @AST_ACTION_CREATE_UNESCAPED_TOKEN;
+
+// A JSON Pointer consists of zero or more reference tokens, each preceded by a '/'.
+// - An empty string matches the root of the JSON document.
+// - "/" matches an empty key at the root.
+// - "/foo/0" matches the first element of the "foo" array.
+JsonPointer = (Slash ReferenceToken)* @AST_ACTION_COLLECT_TOKENS;
+
+// The top-level program rule matches the JSON Pointer followed by the End Of Input.
+Program = JsonPointer eoi;
