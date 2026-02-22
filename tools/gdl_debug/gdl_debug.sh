@@ -1,10 +1,11 @@
 #!/bin/bash
 
 # GDL Debugging Tool
-# Usage: ./gdl_debug.sh <grammar.gdl> "<input_string>"
+# Usage: ./gdl_debug.sh <grammar.gdl> [input_string]
 
-if [ "$#" -lt 2 ]; then
-    echo "Usage: $0 <grammar.gdl> <input_string>"
+if [ "$#" -lt 1 ]; then
+    echo "Usage: $0 <grammar.gdl> [input_string]"
+    echo "If input_string is omitted, enters interactive mode."
     exit 1
 fi
 
@@ -31,7 +32,6 @@ fi
 
 # Create a temporary directory for generated files
 TMP_DIR=$(mktemp -d)
-# echo "Using temporary directory: $TMP_DIR"
 
 BASE_NAME=$(basename "$GDL_FILE" .gdl)
 GEN_C="$TMP_DIR/$BASE_NAME.c"
@@ -39,7 +39,6 @@ GEN_H="$TMP_DIR/$BASE_NAME.h"
 DEBUG_EXE="$TMP_DIR/gdl_debug_exe"
 
 # 1. Compile GDL to C
-# echo "Compiling GDL..."
 "$GDL_COMPILER" "$GDL_FILE" "--output-dir=$TMP_DIR" > "$TMP_DIR/gdl_compilation.log" 2>&1
 if [ $? -ne 0 ]; then
     echo "GDL Compilation Failed:"
@@ -49,7 +48,6 @@ if [ $? -ne 0 ]; then
 fi
 
 # 2. Compile and Link with template_main.c
-# echo "Compiling C code..."
 CREATE_PARSER_FN="create_${BASE_NAME}_parser"
 gcc -DCREATE_PARSER_FN=$CREATE_PARSER_FN \
     "$TEMPLATE_MAIN" "$GEN_C" \
@@ -64,8 +62,11 @@ if [ $? -ne 0 ]; then
 fi
 
 # 3. Run the debugger
-# echo "Running parser..."
-"$DEBUG_EXE" "$INPUT_STRING"
+if [ -z "$INPUT_STRING" ]; then
+    "$DEBUG_EXE"
+else
+    "$DEBUG_EXE" "$INPUT_STRING"
+fi
 EXIT_CODE=$?
 
 # Cleanup
