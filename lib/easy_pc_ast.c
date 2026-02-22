@@ -432,11 +432,14 @@ epc_parse_and_build_ast(
         char *msg = NULL;
         // The error structure from the parser has all the necessary details.
         epc_parser_error_t *err = parse_session.result.data.error;
-        int len = asprintf(&msg, "Parse error: %s at '%.*s' (expected '%s', found '%.*s')",
+        int len = asprintf(
+            &msg,
+            "Parse error: %s at '%.*s' (expected '%s', found '%.*s')Error err: line: %zu, col: %zu",
             err->message,
             (int)(input + strlen(input) - err->input_position), err->input_position,
             err->expected ? err->expected : "N/A",
-            (int)strlen(err->found), err->found ? err->found : "N/A"
+            (int)strlen(err->found), err->found ? err->found : "N/A",
+            err->line, err->col
         );
         if (len < 0)
         {

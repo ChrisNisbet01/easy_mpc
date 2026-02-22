@@ -129,10 +129,12 @@ main(int argc, char ** argv)
         fprintf(stderr, "GDL Parsing Error: %s at input position '%.10s...'\n",
                 session.result.data.error->message,
                 session.result.data.error->input_position);
-        fprintf(stderr, "    Expected %s, found: %s at col %u'\n",
+        fprintf(stderr, "    Expected %s, found: %s at line %zu, col %zu'\n",
                 session.result.data.error->expected,
                 session.result.data.error->found,
-                session.result.data.error->col);
+                session.result.data.error->line,
+                session.result.data.error->col
+               );
         exit_code = EXIT_FAILURE;
     }
     else

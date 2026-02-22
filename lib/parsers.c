@@ -147,6 +147,27 @@ epc_parser_error_free(epc_parser_error_t * error)
     free((char *)error->found);
     free(error);
 }
+typedef struct line_col_calc_result_t
+{
+    size_t line;
+    size_t col;
+} line_column_calc_result_t;
+
+static line_column_calc_result_t
+calculate_line_and_column(char const * start, char const * current)
+{
+    line_column_calc_result_t res = {0};
+    char const * nl;
+    char const * line_start = start;
+    for (nl = strchr(start, '\n'); nl != NULL && nl <= current; nl = strchr(nl + 1, '\n'))
+    {
+        res.line++;
+        line_start = nl;
+    }
+    res.col = current - line_start;
+
+    return res;
+}
 
 epc_parser_error_t *
 epc_parser_error_alloc(
@@ -167,7 +188,9 @@ epc_parser_error_alloc(
         (ctx != NULL) ? ctx->input_start : input_position;
 
     error->input_position = input_position;
-    error->col = input_position - input_start;
+    line_column_calc_result_t res = calculate_line_and_column(input_start, input_position);
+    error->line = res.line;
+    error->col = res.col;
 
     error->message = strdup(message != NULL ? message : "");
     error->expected = strdup(expected != NULL ? expected : "");

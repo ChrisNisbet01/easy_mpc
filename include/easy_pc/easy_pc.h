@@ -59,7 +59,8 @@ typedef struct epc_parser_error_t
 {
     const char * message;        /**< @brief A descriptive error message. */
     const char * input_position; /**< @brief Pointer to the exact position in the input string where the error occurred. */
-    int col;                     /**< @brief The column number in the input where the error occurred (0-indexed, calculated later). */
+    size_t line;                 /**< @brief The line number in the input where the error occurred (0-indexed, calculated later). */
+    size_t col;                  /**< @brief The column number in the input where the error occurred (0-indexed, calculated later). */
     const char * expected;       /**< @brief A string describing what the parser expected at the error position. */
     const char * found;          /**< @brief A string describing what the parser actually found at the error position. */
 } epc_parser_error_t;

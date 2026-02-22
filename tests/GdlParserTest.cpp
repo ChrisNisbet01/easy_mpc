@@ -31,10 +31,11 @@ TEST(GdlParserTest, SimpleFailTerminalWithStringShouldParse) {
     if (session.result.is_error) {
         // Print error message for debugging
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -61,10 +62,11 @@ TEST(GdlParserTest, ParseSimpleIdentifierRule) {
     if (session.result.is_error) {
         // Print error message for debugging
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -163,10 +165,11 @@ TEST(GdlParserTest, ParseSimpleStringLiteralRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -228,10 +231,11 @@ TEST(GdlParserTest, ParseSimpleCharLiteralRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -293,10 +297,11 @@ TEST(GdlParserTest, ParseSimpleCharRangeRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -356,10 +361,11 @@ TEST(GdlParserTest, ParseSimpleSequenceRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -446,10 +452,11 @@ TEST(GdlParserTest, ParseSimpleChoiceRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -557,10 +564,11 @@ TEST(GdlParserTest, ParseSimpleOptionalRule) {
     if (session.result.is_error) {
         char error_msg_buffer[512];
 
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -664,10 +672,11 @@ TEST(GdlParserTest, ParseSimplePlusRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -766,10 +775,11 @@ TEST(GdlParserTest, ParseSimpleStarRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -868,10 +878,11 @@ TEST(GdlParserTest, ParseOneofCallRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -970,10 +981,11 @@ TEST(GdlParserTest, ParseNoneofCallRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -1073,10 +1085,11 @@ TEST(GdlParserTest, ParseCountCallRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -1212,10 +1225,11 @@ TEST(GdlParserTest, ParseBetweenCallRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -1358,10 +1372,11 @@ TEST(GdlParserTest, ParseDelimitedCallRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -1489,10 +1504,11 @@ TEST(GdlParserTest, ParseLookaheadCallRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -1613,10 +1629,11 @@ TEST(GdlParserTest, ParseNotCallRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -1737,10 +1754,11 @@ TEST(GdlParserTest, ParseLexemeCallRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -1861,10 +1879,11 @@ TEST(GdlParserTest, ParseSkipCallRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -1985,10 +2004,11 @@ TEST(GdlParserTest, ParseChainl1CallRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -2115,10 +2135,11 @@ TEST(GdlParserTest, ParseChainr1CallRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -2245,10 +2266,11 @@ TEST(GdlParserTest, ParsePassthruCallRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -2368,10 +2390,11 @@ TEST(GdlParserTest, ParseSemanticActionRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -2437,10 +2460,11 @@ TEST(GdlParserTest, ParseNumberLiteralRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -2507,10 +2531,11 @@ TEST(GdlParserTest, ParseParenthesizedExpressionRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -2598,7 +2623,6 @@ TEST(GdlParserTest, ParseParenthesizedExpressionRule) {
     epc_parse_session_destroy(&session);
 }
 
-#if 0
 // Test parsing an optional combinator call
 // Example GDL: MyOptionalCombinatorRule = optional(alpha);
 TEST(GdlParserTest, ParseOptionalCombinatorCallRule) {
@@ -2607,10 +2631,11 @@ TEST(GdlParserTest, ParseOptionalCombinatorCallRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
@@ -2722,7 +2747,6 @@ TEST(GdlParserTest, ParseOptionalCombinatorCallRule) {
 
     epc_parse_session_destroy(&session);
 }
-#endif
 
 // Test parsing a double keyword rule.
 // Example GDL: MyDoubleRule = double;
@@ -2732,10 +2756,11 @@ TEST(GdlParserTest, ParseDoubleKeywordRule) {
 
     if (session.result.is_error) {
         char error_msg_buffer[512];
-        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (pos %d)"
+        snprintf(error_msg_buffer, sizeof(error_msg_buffer), "GDL Parsing Error: %s at input position '%.10s' (line: %zu, col %zu)"
                  " expected: '%s', found: '%s'\n",
                  session.result.data.error->message,
                  session.result.data.error->input_position,
+                 session.result.data.error->line,
                  session.result.data.error->col,
                  session.result.data.error->expected,
                  session.result.data.error->found);
