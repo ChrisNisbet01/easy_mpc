@@ -3,6 +3,7 @@ project(easy_pc C)
 
 include(FetchContent)
 include(CTest)
+include(cmake/EasyPcMacros.cmake)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
