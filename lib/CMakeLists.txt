@@ -1,4 +1,11 @@
-add_library(easy_pc STATIC easy_pc.c cpt_printer.c parsers.c easy_pc_ast.c)
+add_library(easy_pc 
+  STATIC 
+  easy_pc.c 
+  cpt_printer.c 
+  parsers.c 
+  easy_pc_ast.c
+  child_list.c
+)
 
 target_include_directories(easy_pc PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>

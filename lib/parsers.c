@@ -1,11 +1,14 @@
 #include "parsers.h"
 #include "easy_pc_private.h"
+#include "child_list.h"
 
 #include <ctype.h>    // For isdigit
 #include <stdarg.h> // For va_list, va_start, va_arg, va_end
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define FOUND_BUFFER_SIZE 21
 
 // --- Internal Helper Functions ---
 // --- Parser List free. ---
@@ -450,7 +453,7 @@ pstring_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, const char 
     }
 
     /* Match not found. */
-    char found_buffer[11]; // Max 10 chars + null, initialize to empty
+    char found_buffer[FOUND_BUFFER_SIZE];
     snprintf(found_buffer, sizeof(found_buffer), "%.*s", (int)sizeof(found_buffer) - 1, input);
     char const * error_msg;
 
@@ -500,7 +503,7 @@ peoi_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, const char * i
 
     if (input[0] != '\0') // Input is not exhausted
     {
-        char buf[11];
+        char buf[FOUND_BUFFER_SIZE];
         strncpy(buf, input, sizeof(buf));
         buf[sizeof(buf) - 1] = '\0';
 
@@ -1260,25 +1263,40 @@ pplus_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, const char * 
     }
 
     const char * current_input = input;
-    epc_cpt_node_t * temp_children[128]; /* TODO: No hard-coded constants. */
-    int children_count = 0;
+    child_list_t children = {0};
+    if (!child_list_init(&children, 4))
+    {
+        return epc_parser_error_result(ctx, current_input, "Memory allocation failure for p_plus children", self->name, "N/A");
+    }
+
     const char * plus_start_input = input;
 
     epc_parse_result_t first_child_result = parse(parser_to_repeat, ctx, current_input);
     if (first_child_result.is_error)
     {
+        child_list_release(&children);
         return first_child_result;
     }
 
-    temp_children[children_count++] = first_child_result.data.success;
+    if (!child_list_append(&children, first_child_result.data.success))
+    {
+        child_list_release(&children);
+        return epc_parser_error_result(ctx, current_input, "Memory allocation failure for p_plus children", self->name, "N/A");
+    }
     current_input += first_child_result.data.success->len;
 
-    while (children_count < 128)
+    bool infinite_recursion_detected = false;
+    while (!infinite_recursion_detected)
     {
+        char const * loop_start_input = current_input;
         epc_parse_result_t child_result = parse(parser_to_repeat, ctx, current_input);
         if (!child_result.is_error)
         {
-            temp_children[children_count++] = child_result.data.success;
+            if (!child_list_append(&children, child_result.data.success))
+            {
+                child_list_release(&children);
+                return epc_parser_error_result(ctx, current_input, "Memory allocation failure for p_plus children", self->name, "N/A");
+            }
             current_input += child_result.data.success->len;
         }
         else
@@ -1286,35 +1304,29 @@ pplus_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, const char * 
             epc_parser_result_cleanup(&child_result);
             break;
         }
+        infinite_recursion_detected = current_input == loop_start_input;
+    }
+
+    if (infinite_recursion_detected)
+    {
+        child_list_release(&children);
+        return epc_parser_error_result(
+            ctx,
+            current_input,
+            "Infinite recursion detected",
+            "Progress",
+            "No progress"
+        );
     }
 
     epc_cpt_node_t * parent_node = epc_node_alloc(self, "plus");
     if (parent_node == NULL)
     {
-        for (int i = 0; i < children_count; i++)
-        {
-            epc_node_free(temp_children[i]);
-        }
+        child_list_release(&children);
         return epc_parser_error_result(ctx, plus_start_input, "Memory allocation failure for p_plus parent node", self->name, "N/A");
     }
 
-    if (children_count > 0)
-    {
-        parent_node->children = calloc(children_count, sizeof(*parent_node->children));
-        if (parent_node->children == NULL)
-        {
-            for (int i = 0; i < children_count; i++)
-            {
-                epc_node_free(temp_children[i]);
-            }
-            epc_node_free(parent_node);
-            return epc_parser_error_result(ctx, plus_start_input, "Memory allocation failure for p_plus children array", self->name, "N/A");
-        }
-        memcpy(parent_node->children, temp_children, sizeof(*parent_node->children) * children_count);
-    }
-
-    parent_node->children_count = children_count;
-
+    child_list_transfer(&children, parent_node);
     parent_node->content = plus_start_input;
     parent_node->len = current_input - plus_start_input;
 
@@ -1516,12 +1528,17 @@ pmany_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, const char * 
     }
 
     const char * current_input = input;
-    epc_cpt_node_t * temp_children[128]; // Arbitrary limit for temporary storage
-    int children_count = 0;
+    child_list_t children = {0};
+    if (!child_list_init(&children, 4))
+    {
+        return epc_parser_error_result(ctx, current_input, "Memory allocation failure for p_many children", self->name, "N/A");
+    }
     const char * many_start_input = input;
 
-    while (children_count < 128) // Loop as long as child parser matches
+    bool infinite_recursion_detected = false;
+    while (!infinite_recursion_detected) // Loop as long as child parser matches
     {
+        char const * loop_start_input = current_input;
         epc_parse_result_t child_result = parse(parser_to_repeat, ctx, current_input);
         if (child_result.is_error)
         {
@@ -1532,39 +1549,38 @@ pmany_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, const char * 
             epc_parser_result_cleanup(&child_result);
             break;
         }
-
-        temp_children[children_count++] = child_result.data.success;
+        if (!child_list_append(&children, child_result.data.success))
+        {
+            child_list_release(&children);
+            return epc_parser_error_result(ctx, current_input, "Memory allocation failure for p_many children", self->name, "N/A");
+        }
         current_input += child_result.data.success->len;
+
+        infinite_recursion_detected = current_input == loop_start_input;
+    }
+
+    if (infinite_recursion_detected)
+    {
+        child_list_release(&children);
+        return epc_parser_error_result(
+            ctx,
+            current_input,
+            "Infinite recursion detected",
+            "Progress",
+            "No progress"
+        );
     }
 
     epc_cpt_node_t * parent_node = epc_node_alloc(self, "many");
     if (parent_node == NULL)
     {
-        for (int i = 0; i < children_count; i++)
-        {
-            epc_node_free(temp_children[i]);
-        }
+        child_list_release(&children);
         return epc_parser_error_result(ctx, input, "Memory allocation failure for p_many parent node", self->name, "N/A");
     }
 
+    child_list_transfer(&children, parent_node);
     parent_node->content = many_start_input;
     parent_node->len = current_input - many_start_input;
-
-    // Allocate exact size for children
-    if (children_count > 0)
-    {
-        parent_node->children = calloc(children_count, sizeof(*parent_node->children));
-        if (parent_node->children == NULL)
-        {
-            for (int i = 0; i < children_count; i++)
-            {
-                epc_node_free(temp_children[i]);
-            }
-            return epc_parser_error_result(ctx, input, "Memory allocation failure for p_many children array", self->name, "N/A");
-        }
-        memcpy(parent_node->children, temp_children, sizeof(*parent_node->children) * children_count);
-    }
-    parent_node->children_count = children_count;
 
     return epc_parser_success_result(parent_node);
 }
@@ -1609,8 +1625,11 @@ pcount_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, const char *
     }
 
     const char * current_input = input;
-    epc_cpt_node_t * temp_children[128]; // Arbitrary limit for temporary storage
-    int children_count = 0;
+    child_list_t children = {0};
+    if (!child_list_init(&children, 4))
+    {
+        return epc_parser_error_result(ctx, current_input, "Memory allocation failure for p_count children", self->name, "N/A");
+    }
     const char * count_start_input = input;
 
     for (int i = 0; i < num_to_match; ++i)
@@ -1621,38 +1640,24 @@ pcount_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, const char *
             // Child parser failed to match required number of times
             return child_result; // Propagate the error
         }
-        temp_children[children_count++] = child_result.data.success;
+        if (!child_list_append(&children, child_result.data.success))
+        {
+            child_list_release(&children);
+            return epc_parser_error_result(ctx, current_input, "Memory allocation failure for p_count children", self->name, "N/A");
+        }
         current_input += child_result.data.success->len;
     }
 
     epc_cpt_node_t * parent_node = epc_node_alloc(self, "count");
     if (parent_node == NULL)
     {
-        for (int i = 0; i < children_count; i++)
-        {
-            epc_node_free(temp_children[i]);
-        }
+        child_list_release(&children);
         return epc_parser_error_result(ctx, input, "Memory allocation failure for p_count parent node", self->name, "N/A");
     }
 
+    child_list_transfer(&children, parent_node);
     parent_node->content = count_start_input;
     parent_node->len = current_input - count_start_input;
-    parent_node->children_count = children_count;
-
-    if (children_count > 0)
-    {
-        parent_node->children = calloc(children_count, sizeof(*parent_node->children));
-        if (parent_node->children == NULL)
-        {
-            for (int i = 0; i < children_count; i++)
-            {
-                epc_node_free(temp_children[i]);
-            }
-            epc_node_free(parent_node);
-            return epc_parser_error_result(ctx, input, "Memory allocation failure for p_count children array", self->name, "N/A");
-        }
-        memcpy(parent_node->children, temp_children, sizeof(*parent_node->children) * children_count);
-    }
 
     return epc_parser_success_result(parent_node);
 }
@@ -1787,8 +1792,11 @@ pdelimited_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, const ch
     // Delimiter can be NULL, meaning no delimiter, just sequence of items
 
     const char * current_input = input;
-    epc_cpt_node_t * temp_children[128]; // Arbitrary limit for temporary storage
-    int children_count = 0;
+    child_list_t children = {0};
+    if (!child_list_init(&children, 4))
+    {
+        return epc_parser_error_result(ctx, current_input, "Memory allocation failure for p_delimited children", self->name, "N/A");
+    }
     const char * delimited_start_input = input;
 
     // First item (must match)
@@ -1796,14 +1804,23 @@ pdelimited_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, const ch
 
     if (first_item_result.is_error)
     {
+        child_list_release(&children);
         return first_item_result;
     }
-    temp_children[children_count++] = first_item_result.data.success;
+    if (!child_list_append(&children, first_item_result.data.success))
+    {
+        child_list_release(&children);
+        return epc_parser_error_result(ctx, current_input, "Memory allocation failure for p_delimited children", self->name, "N/A");
+    }
     current_input += first_item_result.data.success->len;
 
     // Remaining items (item + delimiter)
-    while (children_count < 128)
+    bool infinite_recursion_detected = false;
+
+    while (!infinite_recursion_detected)
     {
+        const char * loop_start_input = current_input;
+
         if (delimiter_parser != NULL)
         {
             epc_parser_error_t * original_furthest_error = parser_furthest_error_copy(ctx);
@@ -1820,62 +1837,62 @@ pdelimited_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, const ch
             current_input += delim_result.data.success->len;
             epc_parser_result_cleanup(&delim_result);
         }
+        epc_parser_error_t * original_furthest_error = parser_furthest_error_copy(ctx);
+        epc_parse_result_t item_result = parse(item_parser, ctx, current_input);
+        if (item_result.is_error)
         {
-            epc_parser_error_t * original_furthest_error = parser_furthest_error_copy(ctx);
-            epc_parse_result_t item_result = parse(item_parser, ctx, current_input);
-            if (item_result.is_error)
+            if (delimiter_parser != NULL)
             {
-                if (delimiter_parser != NULL)
-                {
-                    char found_buffer[11]; // Max 10 chars + null, initialize to empty
-                    snprintf(found_buffer, sizeof(found_buffer), "%.*s", (int)sizeof(found_buffer) - 1, current_input);
+                char found_buffer[FOUND_BUFFER_SIZE]; // Max 10 chars + null, initialize to empty
+                snprintf(found_buffer, sizeof(found_buffer), "%.*s", (int)sizeof(found_buffer) - 1, current_input);
 
-                    for (int i = 0; i < children_count; i++)
-                    {
-                        epc_node_free(temp_children[i]);
-                    }
-                    parser_furthest_error_restore(ctx, &original_furthest_error);
-                    epc_parser_result_cleanup(&item_result);
-                    return epc_parser_error_result(
-                        ctx,
-                        current_input,
-                        "Unexpected trailing delimiter",
-                        parser_get_expected_str(ctx, item_parser),
-                        found_buffer
-                    );
-                }
-                // Item not found, stop parsing further items
+                child_list_release(&children);
                 parser_furthest_error_restore(ctx, &original_furthest_error);
                 epc_parser_result_cleanup(&item_result);
-                break;
+                return epc_parser_error_result(
+                    ctx,
+                    current_input,
+                    "Unexpected trailing delimiter",
+                    parser_get_expected_str(ctx, item_parser),
+                    found_buffer
+                );
             }
-        parser_furthest_error_restore(ctx, &original_furthest_error);
-        temp_children[children_count++] = item_result.data.success;
-        current_input += item_result.data.success->len;
+            // Item not found, stop parsing further items
+            parser_furthest_error_restore(ctx, &original_furthest_error);
+            epc_parser_result_cleanup(&item_result);
+            break;
         }
+        parser_furthest_error_restore(ctx, &original_furthest_error);
+        if (!child_list_append(&children, item_result.data.success))
+        {
+            child_list_release(&children);
+            return epc_parser_error_result(ctx, current_input, "Memory allocation failure for p_delimited children", self->name, "N/A");
+        }
+        current_input += item_result.data.success->len;
+
+        infinite_recursion_detected = current_input == loop_start_input;
+    }
+
+    if (infinite_recursion_detected)
+    {
+        child_list_release(&children);
+        return epc_parser_error_result(
+            ctx,
+            current_input,
+            "Infinite recursion detected",
+            "Progress",
+            "No progress"
+        );
     }
 
     epc_cpt_node_t * parent_node = epc_node_alloc(self, "delimited");
     if (parent_node == NULL)
     {
+        child_list_release(&children);
         return epc_parser_error_result(ctx, delimited_start_input, "Memory allocation failure for p_delimited parent node", self->name, "N/A");
     }
 
-    if (children_count > 0)
-    {
-        parent_node->children = calloc(children_count, sizeof(*parent_node->children));
-        if (parent_node->children == NULL)
-        {
-            for (int i = 0; i < children_count; i++)
-            {
-                epc_node_free(temp_children[i]);
-            }
-            return epc_parser_error_result(ctx, delimited_start_input, "Memory allocation failure for p_delimited children array", self->name, "N/A");
-        }
-        memcpy(parent_node->children, temp_children, sizeof(*parent_node->children) * children_count);
-    }
-    parent_node->children_count = children_count;
-
+    child_list_transfer(&children, parent_node);
     parent_node->content = delimited_start_input;
     parent_node->len = current_input - delimited_start_input;
 
