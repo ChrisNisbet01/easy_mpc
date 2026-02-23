@@ -182,7 +182,7 @@ TEST(TerminalParsersNew, Int_FailsOnEmptyInput)
 {
     epc_parser_t* p = epc_int(NULL);
     epc_parse_session_t session = epc_parse_input(p, "");
-    check_failure(session, "Expected an integer");
+    check_failure(session, "Unexpected end of input");
 }
 
 TEST(TerminalParsersNew, Int_FailsOnNullInput)

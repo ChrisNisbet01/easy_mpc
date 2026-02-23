@@ -23,6 +23,7 @@ TEST_GROUP(CptPrinter)
         epc_parser_ctx_t* ctx = (epc_parser_ctx_t*)calloc(1, sizeof(*ctx));
         CHECK_TRUE(ctx != NULL);
         ctx->input_start = input_str;
+        ctx->input_len = ctx->input_start != NULL ? strlen(ctx->input_start) : 0;
         return ctx;
     }
 
@@ -36,7 +37,7 @@ TEST_GROUP(CptPrinter)
         epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(input_str);
         CHECK_TRUE(parse_ctx != NULL);
 
-        epc_parse_result_t result = parser->parse_fn(parser, parse_ctx, input_str);
+        epc_parse_result_t result = parser->parse_fn(parser, parse_ctx, 0);
         if (result.is_error) {
             std::cerr << "Parse Error: " << (result.data.error ? result.data.error->message : "Unknown error") << " at '"
                       << (result.data.error && result.data.error->input_position ? result.data.error->input_position : "NULL")

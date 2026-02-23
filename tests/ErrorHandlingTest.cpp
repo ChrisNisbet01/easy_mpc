@@ -23,6 +23,7 @@ TEST_GROUP(ErrorHandling)
         epc_parser_ctx_t* ctx = (epc_parser_ctx_t*)calloc(1, sizeof(*ctx));
         CHECK_TRUE(ctx != NULL);
         ctx->input_start = input_str;
+        ctx->input_len = ctx->input_start != NULL ? strlen(ctx->input_start) : 0;
         return ctx;
     }
 
@@ -36,14 +37,13 @@ TEST(ErrorHandling, PCharReportsNullInputError)
 {
     epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(NULL);
     epc_parser_t* p = epc_char(NULL, 'a');
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, NULL);
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
-    STRCMP_EQUAL("Input is NULL", result.data.error->message);
     CHECK_TRUE(result.data.error->input_position == NULL);
     STRCMP_EQUAL("a", result.data.error->expected);
-    STRCMP_EQUAL("NULL", result.data.error->found);
+    STRCMP_EQUAL("EOF", result.data.error->found);
      // Furthest error should be updated
     CHECK_TRUE(parse_ctx->furthest_error != NULL);
     CHECK_TRUE(parse_ctx->furthest_error->input_position == result.data.error->input_position);
@@ -55,7 +55,7 @@ TEST(ErrorHandling, PCharReportsEmptyInputError)
 {
     epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx("");
     epc_parser_t* p = epc_char(NULL, 'a');
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -74,7 +74,7 @@ TEST(ErrorHandling, PCharReportsMismatchError)
     const char* input_str = "b";
     epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(input_str);
     epc_parser_t* p = epc_char(NULL, 'a');
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, input_str);
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -92,14 +92,14 @@ TEST(ErrorHandling, PStringReportsNullInputError)
 {
     epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(NULL);
     epc_parser_t* p = epc_string(NULL, "abc");
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, NULL);
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
-    STRCMP_EQUAL("Input is NULL", result.data.error->message);
+    STRCMP_EQUAL("Unexpected end of input", result.data.error->message);
     CHECK_TRUE(result.data.error->input_position == NULL);
     STRCMP_EQUAL("abc", result.data.error->expected);
-    STRCMP_EQUAL("NULL", result.data.error->found);
+    STRCMP_EQUAL("EOF", result.data.error->found);
     CHECK_TRUE(parse_ctx->furthest_error != NULL);
     CHECK_TRUE(parse_ctx->furthest_error->input_position == result.data.error->input_position);
 
@@ -111,7 +111,7 @@ TEST(ErrorHandling, PStringReportsTooShortInputError)
     const char* input_str = "ab";
     epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(input_str);
     epc_parser_t* p = epc_string(NULL, "abc");
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, input_str);
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -130,7 +130,7 @@ TEST(ErrorHandling, PStringReportsMismatchError)
     const char* input_str = "axc";
     epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(input_str);
     epc_parser_t* p = epc_string(NULL, "abc");
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, input_str);
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -148,14 +148,14 @@ TEST(ErrorHandling, PDigitReportsNullInputError)
 {
     epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(NULL);
     epc_parser_t* p = epc_digit(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, NULL);
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
-    STRCMP_EQUAL("Input is NULL", result.data.error->message);
+    STRCMP_EQUAL("Unexpected end of input", result.data.error->message);
     CHECK_TRUE(result.data.error->input_position == NULL);
     STRCMP_EQUAL("digit", result.data.error->expected);
-    STRCMP_EQUAL("NULL", result.data.error->found);
+    STRCMP_EQUAL("EOF", result.data.error->found);
     CHECK_TRUE(parse_ctx->furthest_error != NULL);
     CHECK_TRUE(parse_ctx->furthest_error->input_position == result.data.error->input_position);
 
@@ -166,7 +166,7 @@ TEST(ErrorHandling, PDigitReportsEmptyInputError)
 {
     epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx("");
     epc_parser_t* p = epc_digit(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -185,7 +185,7 @@ TEST(ErrorHandling, PDigitReportsMismatchError)
     const char* input_str = "a";
     epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(input_str);
     epc_parser_t* p = epc_digit(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, input_str);
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -201,11 +201,11 @@ TEST(ErrorHandling, PDigitReportsMismatchError)
 
 TEST(ErrorHandling, POrReportsErrorWhenNoAlternatives)
 {
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx("abc");
-    epc_parser_t* p_or_parser = epc_or(NULL, 0);
     const char* input_str = "abc";
+    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(input_str);
+    epc_parser_t* p_or_parser = epc_or(NULL, 0);
 
-    epc_parse_result_t result = p_or_parser->parse_fn(p_or_parser, parse_ctx, input_str);
+    epc_parse_result_t result = p_or_parser->parse_fn(p_or_parser, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -221,13 +221,13 @@ TEST(ErrorHandling, POrReportsErrorWhenNoAlternatives)
 
 TEST(ErrorHandling, POrReportsErrorWhenAllAlternativesFail)
 {
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx("abc");
+    const char* input_str = "abc";
+    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(input_str);
     epc_parser_t* p_x = epc_char(NULL, 'x');
     epc_parser_t* p_y = epc_char(NULL, 'y');
     epc_parser_t* p_or_parser = epc_or(NULL, 2, p_x, p_y);
-    const char* input_str = "abc";
 
-    epc_parse_result_t result = p_or_parser->parse_fn(p_or_parser, parse_ctx, input_str);
+    epc_parse_result_t result = p_or_parser->parse_fn(p_or_parser, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -253,7 +253,7 @@ TEST(ErrorHandling, FurthestErrorTracking)
     epc_parser_t* p_or_x_def = epc_or(NULL, 2, p_x, p_def);
     epc_parser_t* p_z = epc_char(NULL, 'z'); // Fails at 'a' as well
 
-    epc_parse_result_t result_x = p_x->parse_fn(p_x, parse_ctx, input_str);
+    epc_parse_result_t result_x = p_x->parse_fn(p_x, parse_ctx, 0);
     CHECK_TRUE(result_x.is_error);
     CHECK_TRUE(parse_ctx->furthest_error != NULL);
     // Furthest error is 'x' at 'a'
@@ -262,11 +262,11 @@ TEST(ErrorHandling, FurthestErrorTracking)
 
     // Now make p_char_g fail after p_char_f succeeded
     epc_parser_t* p_char_f = epc_char(NULL, 'f'); // Parser for 'f'
-    epc_parse_result_t res_f = p_char_f->parse_fn(p_char_f, parse_ctx, input_str + 5); // Try 'f' on 'f'
+    epc_parse_result_t res_f = p_char_f->parse_fn(p_char_f, parse_ctx, 5); // Try 'f' on 'f'
     CHECK_FALSE(res_f.is_error); // Should succeed
 
     epc_parser_t* p_char_g = epc_char(NULL, 'g'); // Parser for 'g'
-    epc_parse_result_t res_g = p_char_g->parse_fn(p_char_g, parse_ctx, input_str + 5); // Try 'g' on 'f'
+    epc_parse_result_t res_g = p_char_g->parse_fn(p_char_g, parse_ctx, 5); // Try 'g' on 'f'
     CHECK_TRUE(res_g.is_error);
 
     // Furthest error should be from res_g because it's at input_str + 5

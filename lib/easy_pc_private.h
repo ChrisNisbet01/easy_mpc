@@ -34,6 +34,7 @@ struct epc_ast_builder_ctx_t
 struct epc_parser_ctx_t
 {
     const char * input_start;
+    size_t input_len;
     epc_parser_error_t * furthest_error;
 };
 
@@ -113,7 +114,7 @@ typedef struct parser_data_type_st
 
 struct epc_parser_t
 {
-    epc_parse_result_t (*parse_fn)(struct epc_parser_t * self, epc_parser_ctx_t * ctx, const char * input);
+    epc_parse_result_t (*parse_fn)(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset);
 
     // Parser-specific data
     parser_data_type_st data;
@@ -135,7 +136,7 @@ struct epc_ast_hook_registry_t
 EASY_PC_HIDDEN
 epc_parse_result_t
 epc_unparsed_error_result(
-    const char * input_position,
+    size_t input_offset,
     const char * message,
     const char * expected,
     const char * found

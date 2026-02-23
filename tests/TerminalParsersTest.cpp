@@ -17,7 +17,13 @@ TEST_GROUP(TerminalParsers)
         // This simulates the internal context creation in epc_parse_input()
         parse_ctx = (epc_parser_ctx_t*)calloc(1, sizeof(*parse_ctx)); // parser_ctx_t struct itself from heap
         CHECK_TRUE(parse_ctx != NULL);
-        parse_ctx->input_start = "test input"; // Dummy input for error reporting
+        assign_input("test_input");
+    }
+
+    void assign_input(char const * input)
+    {
+        parse_ctx->input_start = input;
+        parse_ctx->input_len = input != NULL ? strlen(input) : 0;
     }
 
     void teardown() override
@@ -31,7 +37,8 @@ TEST_GROUP(TerminalParsers)
 TEST(TerminalParsers, PCharMatchesCorrectCharacter)
 {
     epc_parser_t* p = epc_char(NULL, 'a');
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "abc");
+    assign_input("abc");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -44,37 +51,38 @@ TEST(TerminalParsers, PCharMatchesCorrectCharacter)
 TEST(TerminalParsers, PCharDoesNotMatchIncorrectCharacter)
 {
     epc_parser_t* p = epc_char(NULL, 'b');
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "abc");
+    assign_input("abc");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
-    std::cout << result.data.error->message << std::endl;
 }
 
 TEST(TerminalParsers, PCharFailsOnEmptyInput)
 {
     epc_parser_t* p = epc_char(NULL, 'a');
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "");
+    assign_input("");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
-    std::cout << result.data.error->message << std::endl;
 }
 
 TEST(TerminalParsers, PCharFailsOnNullInput)
 {
     epc_parser_t* p = epc_char(NULL, 'a');
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, NULL);
+    assign_input(NULL);
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
-    std::cout << result.data.error->message << std::endl;
 }
 
 TEST(TerminalParsers, PStringMatchesCorrectString)
 {
     epc_parser_t* p = epc_string(NULL, "hello");
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "hello world");
+    assign_input("hello world");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -87,47 +95,48 @@ TEST(TerminalParsers, PStringMatchesCorrectString)
 TEST(TerminalParsers, PStringDoesNotMatchIncorrectString)
 {
     epc_parser_t* p = epc_string(NULL, "world");
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "hello world");
+    assign_input("hello world");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
-    std::cout << result.data.error->message << std::endl;
 }
 
 TEST(TerminalParsers, PStringFailsWhenInputTooShort)
 {
     epc_parser_t* p = epc_string(NULL, "hello");
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "hell"); // Input "hell", expected "hello"
+    assign_input("hell");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
-    std::cout << result.data.error->message << std::endl;
 }
 
 TEST(TerminalParsers, PStringFailsOnEmptyInput)
 {
     epc_parser_t* p = epc_string(NULL, "hello");
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "");
+    assign_input("");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
-    std::cout << result.data.error->message << std::endl;
 }
 
 TEST(TerminalParsers, PStringFailsOnNullInput)
 {
     epc_parser_t* p = epc_string(NULL, "hello");
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, NULL);
+    assign_input(NULL);
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
-    std::cout << result.data.error->message << std::endl;
 }
 
 TEST(TerminalParsers, PDigitMatchesCorrectDigit)
 {
     epc_parser_t* p = epc_digit(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "123");
+    assign_input("123");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -140,31 +149,31 @@ TEST(TerminalParsers, PDigitMatchesCorrectDigit)
 TEST(TerminalParsers, PDigitDoesNotMatchNonDigit)
 {
     epc_parser_t* p = epc_digit(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "abc");
+    assign_input("abc");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
-    std::cout << result.data.error->message << std::endl;
 }
 
 TEST(TerminalParsers, PDigitFailsOnEmptyInput)
 {
     epc_parser_t* p = epc_digit(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "");
+    assign_input("");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
-    std::cout << result.data.error->message << std::endl;
 }
 
 TEST(TerminalParsers, PDigitFailsOnNullInput)
 {
     epc_parser_t* p = epc_digit(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, NULL);
+    assign_input(NULL);
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
-    std::cout << result.data.error->message << std::endl;
 }
 
 TEST(TerminalParsers, POrMatchesFirstAlternative)
@@ -172,8 +181,9 @@ TEST(TerminalParsers, POrMatchesFirstAlternative)
     epc_parser_t* p_a = epc_char(NULL, 'a');
     epc_parser_t* p_b = epc_char(NULL, 'b');
     epc_parser_t* p_or_parser = epc_or(NULL, 2, p_a, p_b);
+    assign_input("abc");
 
-    epc_parse_result_t result = p_or_parser->parse_fn(p_or_parser, parse_ctx, "abc");
+    epc_parse_result_t result = p_or_parser->parse_fn(p_or_parser, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -188,8 +198,9 @@ TEST(TerminalParsers, POrMatchesLaterAlternative)
     epc_parser_t* p_a = epc_char(NULL, 'x'); // Will fail
     epc_parser_t* p_b = epc_char(NULL, 'b'); // Will succeed
     epc_parser_t* p_or_parser = epc_or(NULL, 2, p_a, p_b);
+    assign_input("bca");
 
-    epc_parse_result_t result = p_or_parser->parse_fn(p_or_parser, parse_ctx, "bca");
+    epc_parse_result_t result = p_or_parser->parse_fn(p_or_parser, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -205,22 +216,22 @@ TEST(TerminalParsers, POrFailsWhenAllAlternativesFail)
     epc_parser_t* p_b = epc_char(NULL, 'y');
     epc_parser_t* p_or_parser = epc_or(NULL, 2, p_a, p_b);
 
-    epc_parse_result_t result = p_or_parser->parse_fn(p_or_parser, parse_ctx, "abc");
+    assign_input("abc");
+    epc_parse_result_t result = p_or_parser->parse_fn(p_or_parser, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
-    std::cout << result.data.error->message << std::endl;
 }
 
 TEST(TerminalParsers, POrFailsWithEmptyAlternativesList)
 {
     epc_parser_t* p_or_parser = epc_or(NULL, 0);
 
-    epc_parse_result_t result = p_or_parser->parse_fn(p_or_parser, parse_ctx, "abc");
+    assign_input("abc");
+    epc_parse_result_t result = p_or_parser->parse_fn(p_or_parser, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
-    std::cout << result.data.error->message << std::endl;
 }
 
 TEST(TerminalParsers, PAndMatchesSequenceOfParsers)
@@ -230,7 +241,8 @@ TEST(TerminalParsers, PAndMatchesSequenceOfParsers)
     epc_parser_t* p_c = epc_char(NULL, 'c');
     epc_parser_t* p_and_parser = epc_and(NULL, 3, p_a, p_b, p_c);
 
-    epc_parse_result_t result = p_and_parser->parse_fn(p_and_parser, parse_ctx, "abcde");
+    assign_input("abcde");
+    epc_parse_result_t result = p_and_parser->parse_fn(p_and_parser, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -254,8 +266,9 @@ TEST(TerminalParsers, PAndFailsIfFirstChildFails)
     epc_parser_t* p_c = epc_char(NULL, 'c');
     epc_parser_t* p_and_parser = epc_and(NULL, 3, p_x, p_b, p_c);
     const char* input_str = "abc";
+    assign_input(input_str);
 
-    epc_parse_result_t result = p_and_parser->parse_fn(p_and_parser, parse_ctx, input_str);
+    epc_parse_result_t result = p_and_parser->parse_fn(p_and_parser, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -275,7 +288,8 @@ TEST(TerminalParsers, PAndFailsIfMiddleChildFails)
     epc_parser_t* p_and_parser = epc_and(NULL, 3, p_a, p_x, p_c);
     const char* input_str = "abc";
 
-    epc_parse_result_t result = p_and_parser->parse_fn(p_and_parser, parse_ctx, input_str);
+    assign_input(input_str);
+    epc_parse_result_t result = p_and_parser->parse_fn(p_and_parser, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -292,7 +306,8 @@ TEST(TerminalParsers, PAndFailsWithEmptySequenceList)
     epc_parser_t* p_and_parser = epc_and(NULL, 0);
     const char* input_str = "abc";
 
-    epc_parse_result_t result = p_and_parser->parse_fn(p_and_parser, parse_ctx, input_str);
+    assign_input(input_str);
+    epc_parse_result_t result = p_and_parser->parse_fn(p_and_parser, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -307,7 +322,8 @@ TEST(TerminalParsers, PAndFailsWithEmptySequenceList)
 TEST(TerminalParsers, PSpaceMatchesSpace)
 {
     epc_parser_t* p = epc_space(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, " abc");
+    assign_input(" abc");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -320,7 +336,9 @@ TEST(TerminalParsers, PSpaceMatchesSpace)
 TEST(TerminalParsers, PSpaceMatchesTab)
 {
     epc_parser_t* p = epc_space(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "\tabc");
+    assign_input("\tabc");
+
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -333,7 +351,8 @@ TEST(TerminalParsers, PSpaceMatchesTab)
 TEST(TerminalParsers, PSpaceMatchesNewline)
 {
     epc_parser_t* p = epc_space(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "\nabc");
+    assign_input("\nabc");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -347,7 +366,8 @@ TEST(TerminalParsers, PSpaceDoesNotMatchNonWhitespace)
 {
     epc_parser_t* p = epc_space(NULL);
     const char* input_str = "abc";
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, input_str);
+    assign_input(input_str);
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -362,7 +382,8 @@ TEST(TerminalParsers, PSpaceDoesNotMatchNonWhitespace)
 TEST(TerminalParsers, PSpaceFailsOnEmptyInput)
 {
     epc_parser_t* p = epc_space(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "");
+    assign_input("");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -380,7 +401,8 @@ TEST(TerminalParsers, PSkipSkipsMultipleSpaces)
     epc_parser_t* p = epc_skip(NULL, p_s);
     const char* input_str = "   abc";
 
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, input_str);
+    assign_input(input_str);
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -396,7 +418,8 @@ TEST(TerminalParsers, PSkipSkipsZeroSpaces)
     epc_parser_t* p = epc_skip(NULL, p_s);
     const char* input_str = "abc";
 
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, input_str);
+    assign_input(input_str);
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -412,7 +435,8 @@ TEST(TerminalParsers, PSkipSkipsMixedWhitespace)
     epc_parser_t* p = epc_skip(NULL, p_s);
     const char* input_str = " \t\n\r abc"; // Space, tab, newline, carriage return
 
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, input_str);
+    assign_input(input_str);
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -427,7 +451,8 @@ TEST(TerminalParsers, PSkipHandlesNullChildParser)
     epc_parser_t* p = epc_skip(NULL, NULL);
     const char* input_str = "abc";
 
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, input_str);
+    assign_input(input_str);
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -447,7 +472,13 @@ TEST_GROUP(DoubleParser)
     {
         parse_ctx = (epc_parser_ctx_t*)calloc(1, sizeof(*parse_ctx));
         CHECK_TRUE(parse_ctx != NULL);
-        parse_ctx->input_start = "test input";
+        assign_input("test_input");
+    }
+
+    void assign_input(char const * input)
+    {
+        parse_ctx->input_start = input;
+        parse_ctx->input_len = input != NULL ? strlen(input) : 0;
     }
 
     void teardown() override
@@ -461,7 +492,8 @@ TEST_GROUP(DoubleParser)
 TEST(DoubleParser, PDoubleMatchesInteger)
 {
     epc_parser_t* p = epc_double(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "123abc");
+    assign_input("123abc");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -474,7 +506,8 @@ TEST(DoubleParser, PDoubleMatchesInteger)
 TEST(DoubleParser, PDoubleMatchesSimpleDecimal)
 {
     epc_parser_t* p = epc_double(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "123.45xyz");
+    assign_input("123.45xyz");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -487,7 +520,8 @@ TEST(DoubleParser, PDoubleMatchesSimpleDecimal)
 TEST(DoubleParser, PDoubleMatchesLeadingDecimal)
 {
     epc_parser_t* p = epc_double(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, ".45xyz");
+    assign_input(".45xyz");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -500,7 +534,8 @@ TEST(DoubleParser, PDoubleMatchesLeadingDecimal)
 TEST(DoubleParser, PDoubleMatchesTrailingDecimal)
 {
     epc_parser_t* p = epc_double(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "123.xyz");
+    assign_input("123.xyz");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -513,7 +548,8 @@ TEST(DoubleParser, PDoubleMatchesTrailingDecimal)
 TEST(DoubleParser, PDoubleMatchesPositiveSign)
 {
     epc_parser_t* p = epc_double(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "+123.45xyz");
+    assign_input("+123.45xyz");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -526,7 +562,8 @@ TEST(DoubleParser, PDoubleMatchesPositiveSign)
 TEST(DoubleParser, PDoubleMatchesNegativeSign)
 {
     epc_parser_t* p = epc_double(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "-123xyz");
+    assign_input("-123xyz");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -539,7 +576,8 @@ TEST(DoubleParser, PDoubleMatchesNegativeSign)
 TEST(DoubleParser, PDoubleMatchesExponentPositive)
 {
     epc_parser_t* p = epc_double(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "1.23e5xyz");
+    assign_input("1.23e5xyz");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -552,7 +590,8 @@ TEST(DoubleParser, PDoubleMatchesExponentPositive)
 TEST(DoubleParser, PDoubleMatchesExponentNegative)
 {
     epc_parser_t* p = epc_double(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "1.23E-5xyz");
+    assign_input("1.23E-5xyz");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -565,7 +604,8 @@ TEST(DoubleParser, PDoubleMatchesExponentNegative)
 TEST(DoubleParser, PDoubleMatchesExponentWithSign)
 {
     epc_parser_t* p = epc_double(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "-1e+2xyz");
+    assign_input("-1e+2xyz");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -578,7 +618,8 @@ TEST(DoubleParser, PDoubleMatchesExponentWithSign)
 TEST(DoubleParser, PDoubleMatchesZero)
 {
     epc_parser_t* p = epc_double(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "0xyz");
+    assign_input("0xyz");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -591,7 +632,8 @@ TEST(DoubleParser, PDoubleMatchesZero)
 TEST(DoubleParser, PDoubleMatchesZeroDecimal)
 {
     epc_parser_t* p = epc_double(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "0.0xyz");
+    assign_input("0.0xyz");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -606,7 +648,8 @@ TEST(DoubleParser, PDoubleFailsOnNonNumeric)
 {
     epc_parser_t* p = epc_double(NULL);
     char const * input = "abc";
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, input);
+    assign_input(input);
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -618,29 +661,30 @@ TEST(DoubleParser, PDoubleFailsOnNonNumeric)
 TEST(DoubleParser, PDoubleFailsOnEmptyInput)
 {
     epc_parser_t* p = epc_double(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "");
+    assign_input("");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
-    STRCMP_EQUAL("Expected a double", result.data.error->message);
+    STRCMP_EQUAL("Unexpected end of input", result.data.error->message);
     STRCMP_EQUAL("EOF", result.data.error->found);
 }
 
 TEST(DoubleParser, PDoubleFailsOnNullInput)
 {
     epc_parser_t* p = epc_double(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, NULL);
+    assign_input(NULL);
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
-    STRCMP_EQUAL("Input is NULL", result.data.error->message);
-    STRCMP_EQUAL("NULL", result.data.error->found);
 }
 
 TEST(DoubleParser, PDoubleFailsOnJustDecimalPoint)
 {
     epc_parser_t* p = epc_double(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, ".");
+    assign_input(".");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -651,7 +695,8 @@ TEST(DoubleParser, PDoubleFailsOnJustDecimalPoint)
 TEST(DoubleParser, PDoubleFailsOnJustSign)
 {
     epc_parser_t* p = epc_double(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "+");
+    assign_input("+");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -662,7 +707,8 @@ TEST(DoubleParser, PDoubleFailsOnJustSign)
 TEST(DoubleParser, PDoubleFailsOnSignDecimal)
 {
     epc_parser_t* p = epc_double(NULL);
-    epc_parse_result_t result = p->parse_fn(p, parse_ctx, "+.");
+    assign_input("+.");
+    epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);

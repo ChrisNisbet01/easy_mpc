@@ -52,6 +52,7 @@ internal_create_parse_ctx(const char * input_start)
     }
 
     ctx->input_start = input_start;
+    ctx->input_len = ctx->input_start != NULL ? strlen(ctx->input_start) : 0;
 
     return ctx;
 }
@@ -78,7 +79,7 @@ epc_parse_input(epc_parser_t * top_parser, const char * input_string)
     if (!ctx)
     {
         session_result.result = epc_unparsed_error_result(
-            input_string,
+            0,
             "Failed to create internal parse context.",
             "valid parse context",
             "NULL"
@@ -90,18 +91,26 @@ epc_parse_input(epc_parser_t * top_parser, const char * input_string)
     if (top_parser == NULL)
     {
         session_result.result = epc_unparsed_error_result(
-            input_string, "Top parser not set for grammar", "grammar with a top parser", "NULL top_parser");
+            0,
+            "Top parser not set for grammar",
+            "grammar with a top parser",
+            "NULL top_parser"
+        );
         return session_result;
     }
 
     if (input_string == NULL)
     {
         session_result.result = epc_unparsed_error_result(
-            input_string, "Input string is NULL", "non-NULL input string", "NULL");
+            0,
+            "Input string is NULL",
+            "non-NULL input string",
+            "NULL"
+        );
         return session_result;
     }
 
-    session_result.result = top_parser->parse_fn(top_parser, ctx, input_string);
+    session_result.result = top_parser->parse_fn(top_parser, ctx, 0);
 
     // After parsing, if an error occurred, check if the tracked "furthest_error"
     // is more informative than the one that caused the final failure.

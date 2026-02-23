@@ -113,7 +113,7 @@ TEST(CombinatorParsersNew, Count_FailsIfLessThanExpected)
     epc_parser_t* p_a = epc_char(NULL, 'a');
     epc_parser_t* p_count_3_a = epc_count(NULL, 3, p_a);
     epc_parse_session_t session = epc_parse_input(p_count_3_a, "aa");
-    check_failure(session, "Unexpected end of input"); // from p_char
+    check_failure(session, "Count failed to match child at count 3"); // from p_char
     epc_parse_session_destroy(&session);
 }
 
@@ -525,7 +525,7 @@ TEST(CombinatorParsersNew, ChainL1_FailsIfSubsequentItemMissing)
     epc_parser_t* p_plus = epc_char(NULL, '+');
     epc_parser_t* p_chain = epc_chainl1(NULL, p_num, p_plus);
     epc_parse_session_t session = epc_parse_input(p_chain, "1+");
-    check_failure(session, "Expected an integer");
+    check_failure(session, "Unexpected end of input");
     epc_parsers_free(3, p_num, p_plus, p_chain);
     epc_parse_session_destroy(&session);
 }
@@ -609,7 +609,7 @@ TEST(CombinatorParsersNew, ChainR1_FailsIfSubsequentItemMissing)
     epc_parser_t* p_caret = epc_char(NULL, '^');
     epc_parser_t* p_chain = epc_chainr1(NULL, p_num, p_caret);
     epc_parse_session_t session = epc_parse_input(p_chain, "1^");
-    check_failure(session, "Expected an integer");
+    check_failure(session, "Unexpected end of input");
     epc_parsers_free(3, p_num, p_caret, p_chain);
     epc_parse_session_destroy(&session);
 }

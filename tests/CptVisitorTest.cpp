@@ -39,6 +39,7 @@ TEST_GROUP(CptVisitor)
         test_parse_ctx = (epc_parser_ctx_t*)calloc(1, sizeof(*test_parse_ctx)); // parser_ctx_t struct itself from heap
         CHECK_TRUE(test_parse_ctx != NULL);
         test_parse_ctx->input_start = "test input string"; // Dummy input for error reporting
+        test_parse_ctx->input_len = strlen(test_parse_ctx->input_start);
     }
 
     void teardown() override

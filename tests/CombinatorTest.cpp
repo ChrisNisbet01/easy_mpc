@@ -19,15 +19,18 @@ TEST_GROUP(CombinatorTest)
     }
 
     // Helper to create a transient parser_ctx_t for test cases
-    epc_parser_ctx_t* create_transient_parse_ctx(const char* input_str) {
+    epc_parser_ctx_t* create_transient_parse_ctx(const char* input_str)
+    {
         epc_parser_ctx_t* ctx = (epc_parser_ctx_t*)calloc(1, sizeof(*ctx));
         CHECK_TRUE(ctx != NULL);
         ctx->input_start = input_str;
+        ctx->input_len = ctx->input_start != NULL ? strlen(ctx->input_start) : 0;
         return ctx;
     }
 
     // Helper to destroy a transient parser_ctx_t
-    void destroy_transient_parse_ctx(epc_parser_ctx_t* ctx) {
+    void destroy_transient_parse_ctx(epc_parser_ctx_t* ctx)
+    {
         free(ctx); // Free the parser_ctx_t struct itself
     }
 };
@@ -38,7 +41,7 @@ TEST(CombinatorTest, PStarMatchesZero)
     epc_parser_t* p_char_a = epc_char(NULL, 'a');
     epc_parser_t* p_star_a = epc_many(NULL, p_char_a);
 
-    epc_parse_result_t result = p_star_a->parse_fn(p_star_a, parse_ctx, "");
+    epc_parse_result_t result = p_star_a->parse_fn(p_star_a, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -57,7 +60,7 @@ TEST(CombinatorTest, PStarMatchesOne)
     epc_parser_t* p_char_a = epc_char(NULL, 'a');
     epc_parser_t* p_star_a = epc_many(NULL, p_char_a);
 
-    epc_parse_result_t result = p_star_a->parse_fn(p_star_a, parse_ctx, "abc");
+    epc_parse_result_t result = p_star_a->parse_fn(p_star_a, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -77,7 +80,7 @@ TEST(CombinatorTest, PStarMatchesMultiple)
     epc_parser_t* p_char_a = epc_char(NULL, 'a');
     epc_parser_t* p_star_a = epc_many(NULL, p_char_a);
 
-    epc_parse_result_t result = p_star_a->parse_fn(p_star_a, parse_ctx, "aaabc");
+    epc_parse_result_t result = p_star_a->parse_fn(p_star_a, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -99,7 +102,7 @@ TEST(CombinatorTest, PStarMatchesMultipleThenFails)
     epc_parser_t* p_char_a = epc_char(NULL, 'a');
     epc_parser_t* p_star_a = epc_many(NULL, p_char_a);
 
-    epc_parse_result_t result = p_star_a->parse_fn(p_star_a, parse_ctx, "aaabbc");
+    epc_parse_result_t result = p_star_a->parse_fn(p_star_a, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -121,7 +124,7 @@ TEST(CombinatorTest, PPlusMatchesOne)
     epc_parser_t* p_char_a = epc_char(NULL, 'a');
     epc_parser_t* p_plus_a = epc_plus(NULL, p_char_a);
 
-    epc_parse_result_t result = p_plus_a->parse_fn(p_plus_a, parse_ctx, "abc");
+    epc_parse_result_t result = p_plus_a->parse_fn(p_plus_a, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -141,7 +144,7 @@ TEST(CombinatorTest, PPlusMatchesMultiple)
     epc_parser_t* p_char_a = epc_char(NULL, 'a');
     epc_parser_t* p_plus_a = epc_plus(NULL, p_char_a);
 
-    epc_parse_result_t result = p_plus_a->parse_fn(p_plus_a, parse_ctx, "aaabc");
+    epc_parse_result_t result = p_plus_a->parse_fn(p_plus_a, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
@@ -163,7 +166,7 @@ TEST(CombinatorTest, PPlusFailsOnZeroMatches)
     epc_parser_t* p_char_a = epc_char(NULL, 'a');
     epc_parser_t* p_plus_a = epc_plus(NULL, p_char_a);
 
-    epc_parse_result_t result = p_plus_a->parse_fn(p_plus_a, parse_ctx, "bbc");
+    epc_parse_result_t result = p_plus_a->parse_fn(p_plus_a, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
@@ -181,7 +184,7 @@ TEST(CombinatorTest, PPlusMatchesMultipleThenFails)
     epc_parser_t* p_char_a = epc_char(NULL, 'a');
     epc_parser_t* p_plus_a = epc_plus(NULL, p_char_a);
 
-    epc_parse_result_t result = p_plus_a->parse_fn(p_plus_a, parse_ctx, "aaabbc");
+    epc_parse_result_t result = p_plus_a->parse_fn(p_plus_a, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
