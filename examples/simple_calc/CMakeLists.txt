@@ -8,6 +8,8 @@ add_executable(${app}
   grammar.c
 )
 
+add_dependencies(${app} all_unit_tests)
+
 target_compile_options(${app} PRIVATE -Wall -Wextra -pedantic -Werror)
 
 target_link_libraries(${app} PRIVATE

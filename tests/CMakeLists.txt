@@ -1,9 +1,13 @@
 enable_testing()
 
+add_custom_target(all_unit_tests)
+
 add_executable(TerminalParsersTest 
     AllTests.cpp
     TerminalParsersTest.cpp
 )
+
+add_dependencies(all_unit_tests TerminalParsersTest)
 
 target_include_directories(TerminalParsersTest  PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
@@ -26,6 +30,8 @@ add_executable(TerminalParsersNewTest
     TerminalParsersNewTest.cpp
 )
 
+add_dependencies(all_unit_tests TerminalParsersNewTest)
+
 target_include_directories(TerminalParsersNewTest PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${CMAKE_CURRENT_SOURCE_DIR}/../lib
@@ -46,6 +52,8 @@ add_executable(ErrorHandlingTest
     AllTests.cpp
     ErrorHandlingTest.cpp
 )
+
+add_dependencies(all_unit_tests ErrorHandlingTest)
 
 target_include_directories(ErrorHandlingTest  PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../include
@@ -68,6 +76,8 @@ add_executable(CptPrinterTest
     CptPrinterTest.cpp
 )
 
+add_dependencies(all_unit_tests CptPrinterTest)
+
 target_include_directories(CptPrinterTest  PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../include
   ${CMAKE_CURRENT_SOURCE_DIR}/../lib
@@ -88,6 +98,8 @@ add_executable(CptVisitorTest
     AllTests.cpp
     CptVisitorTest.cpp
 )
+
+add_dependencies(all_unit_tests CptVisitorTest)
 
 target_include_directories(CptVisitorTest  PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../include
@@ -110,6 +122,8 @@ add_executable(CombinatorTest
     CombinatorTest.cpp
 )
 
+add_dependencies(all_unit_tests CombinatorTest)
+
 target_include_directories(CombinatorTest  PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../include
   ${CMAKE_CURRENT_SOURCE_DIR}/../lib
@@ -130,6 +144,8 @@ add_executable(CombinatorNewTest
     AllTests.cpp
     CombinatorNewTest.cpp
 )
+
+add_dependencies(all_unit_tests CombinatorNewTest)
 
 target_include_directories(CombinatorNewTest PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
@@ -152,6 +168,8 @@ add_executable(ParserListTest
     ParserListTest.cpp
 )
 
+add_dependencies(all_unit_tests ParserListTest)
+
 target_include_directories(ParserListTest PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${CMAKE_CURRENT_SOURCE_DIR}/../lib
@@ -173,6 +191,8 @@ add_executable(GdlParserTest
     GdlParserTest.cpp
     ../tools/gdl_compiler/gdl_parser.c
 )
+
+add_dependencies(all_unit_tests GdlParserTest)
 
 target_include_directories(GdlParserTest PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
@@ -198,6 +218,8 @@ add_executable(GdlAstBuilderTest
     ../tools/gdl_compiler/gdl_parser.c
     ../tools/gdl_compiler/gdl_compiler_ast_actions.c
 )
+
+add_dependencies(all_unit_tests GdlAstBuilderTest)
 
 target_include_directories(GdlAstBuilderTest PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
@@ -225,6 +247,8 @@ add_executable(GeneratedParserTest
     ../tools/gdl_compiler/gdl_code_generator.c # Include the code generator source
 )
 
+add_dependencies(all_unit_tests GeneratedParserTest)
+
 target_include_directories(GeneratedParserTest PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${CMAKE_CURRENT_SOURCE_DIR}/../lib
@@ -247,6 +271,8 @@ add_executable(AstBuilderTest
     AllTests.cpp
     AstBuilderTest.cpp
 )
+
+add_dependencies(all_unit_tests AstBuilderTest)
 
 target_include_directories(AstBuilderTest PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include

@@ -15,6 +15,8 @@ add_executable(${APP}
     json_pointer_ast_actions.c
 )
 
+add_dependencies(${APP} all_unit_tests)
+
 # Link against the generated library and easy_pc
 target_link_libraries(${APP}
     PRIVATE
