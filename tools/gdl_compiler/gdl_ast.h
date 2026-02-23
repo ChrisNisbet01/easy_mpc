@@ -32,7 +32,6 @@ typedef enum epc_ast_user_defined_action_gdl
     GDL_AST_ACTION_CREATE_SKIP_CALL,
     GDL_AST_ACTION_CREATE_CHAINL1_CALL,
     GDL_AST_ACTION_CREATE_CHAINR1_CALL,
-    GDL_AST_ACTION_CREATE_PASSTHRU_CALL,
     GDL_AST_ACTION_CREATE_SEQUENCE,
     GDL_AST_ACTION_CREATE_ALTERNATIVE,
     GDL_AST_ACTION_CREATE_OPTIONAL,
@@ -74,7 +73,6 @@ typedef enum
     GDL_AST_NODE_TYPE_COMBINATOR_SKIP,
     GDL_AST_NODE_TYPE_COMBINATOR_CHAINL1,
     GDL_AST_NODE_TYPE_COMBINATOR_CHAINR1,
-    GDL_AST_NODE_TYPE_COMBINATOR_PASSTHRU,
     GDL_AST_NODE_TYPE_FAIL_CALL,
     GDL_AST_NODE_TYPE_SEQUENCE,
     GDL_AST_NODE_TYPE_ALTERNATIVE,
@@ -191,7 +189,7 @@ typedef struct
 typedef struct
 {
     gdl_ast_node_t * expr;
-} gdl_ast_combinator_unary_t; // For lookahead, not, lexeme, skip, passthru, optional
+} gdl_ast_combinator_unary_t; // For lookahead, not, lexeme, skip, optional
 
 typedef struct
 {

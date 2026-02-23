@@ -402,7 +402,6 @@ traverse_expression_for_references(gdl_ast_node_t * expression_node, const gdl_r
     case GDL_AST_NODE_TYPE_COMBINATOR_SKIP:
     case GDL_AST_NODE_TYPE_COMBINATOR_CHAINL1:
     case GDL_AST_NODE_TYPE_COMBINATOR_CHAINR1:
-    case GDL_AST_NODE_TYPE_COMBINATOR_PASSTHRU:
     case GDL_AST_NODE_TYPE_FAIL_CALL:
     case GDL_AST_NODE_TYPE_PROGRAM: // Should not happen here
     case GDL_AST_NODE_TYPE_RULE_DEFINITION: // Should not happen here
@@ -917,17 +916,6 @@ generate_expression_code(
     case GDL_AST_NODE_TYPE_COMBINATOR_SKIP:
     {
         fprintf(source_file, "epc_skip_l(list, %s%s%s, ", q, expr_name, q);
-        if (!generate_expression_code(source_file, expression_node->data.unary_combinator_call.expr, indent_level + 1, rule_list, NULL))
-        {
-            return false;
-        }
-        fprintf(source_file, ")");
-        break;
-    }
-
-    case GDL_AST_NODE_TYPE_COMBINATOR_PASSTHRU:
-    {
-        fprintf(source_file, "epc_passthru_l(list, %s%s%s, ", q, expr_name, q);
         if (!generate_expression_code(source_file, expression_node->data.unary_combinator_call.expr, indent_level + 1, rule_list, NULL))
         {
             return false;

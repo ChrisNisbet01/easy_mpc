@@ -58,13 +58,13 @@ make_functions_parser(epc_parser_list * list)
 
     if (cb_ctx.p_binary_functions != NULL)
     {
-        functions = epc_passthru_l(list, "binary_functions", cb_ctx.p_binary_functions);
+        functions = cb_ctx.p_binary_functions;
     }
     if (cb_ctx.p_unary_functions != NULL)
     {
         if (functions == NULL)
         {
-            functions = epc_passthru_l(list, "unary_functions", cb_ctx.p_unary_functions);
+            functions = cb_ctx.p_unary_functions;
         }
         else
         {

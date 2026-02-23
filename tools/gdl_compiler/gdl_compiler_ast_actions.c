@@ -182,7 +182,6 @@ gdl_ast_node_free(void * node_ptr, void * user_data)
     case GDL_AST_NODE_TYPE_COMBINATOR_NOT:
     case GDL_AST_NODE_TYPE_COMBINATOR_LEXEME:
     case GDL_AST_NODE_TYPE_COMBINATOR_SKIP:
-    case GDL_AST_NODE_TYPE_COMBINATOR_PASSTHRU:
         gdl_ast_node_free(node->data.unary_combinator_call.expr, user_data);
         break;
 
@@ -1121,9 +1120,6 @@ static void handle_create_lexeme_call(epc_ast_builder_ctx_t * ctx, epc_cpt_node_
 static void handle_create_skip_call(epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data) {
     handle_unary_combinator_call(ctx, node, children, count, user_data, GDL_AST_NODE_TYPE_COMBINATOR_SKIP);
 }
-static void handle_create_passthru_call(epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data) {
-    handle_unary_combinator_call(ctx, node, children, count, user_data, GDL_AST_NODE_TYPE_COMBINATOR_PASSTHRU);
-}
 
 static void
 handle_create_chainl1_call(
@@ -1494,6 +1490,5 @@ gdl_ast_hook_registry_init(epc_ast_hook_registry_t * registry, void * user_data)
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_SKIP_CALL, handle_create_skip_call);
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_CHAINL1_CALL, handle_create_chainl1_call);
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_CHAINR1_CALL, handle_create_chainr1_call);
-    epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_PASSTHRU_CALL, handle_create_passthru_call);
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_FAIL_CALL, handle_create_fail_call);
 }

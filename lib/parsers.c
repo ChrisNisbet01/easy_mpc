@@ -1348,32 +1348,6 @@ epc_plus(char const * name, epc_parser_t * parser_to_repeat)
 }
 
 static epc_parse_result_t
-ppassthru_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, const char * input)
-{
-    epc_parser_t * child_parser = (epc_parser_t *)self->data.other;
-    if (child_parser == NULL)
-    {
-        return epc_parser_error_result(ctx, input, "p_passthru received NULL child parser", self->name, "NULL");
-    }
-
-    return parse(child_parser, ctx, input);
-}
-
-epc_parser_t *
-epc_passthru(char const * name, epc_parser_t * child_parser)
-{
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "passthru_parser");
-    if (p == NULL)
-    {
-        return NULL;
-    }
-    p->parse_fn = ppassthru_parse_fn;
-    p->data.other = child_parser;
-
-    return p;
-}
-
-static epc_parse_result_t
 pchar_range_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, const char * input)
 {
     char_range_data_t * range = &self->data.range;

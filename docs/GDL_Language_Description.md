@@ -120,7 +120,6 @@ GDL provides a rich set of combinators, which are functions that combine simpler
 | `lookahead` | `(expression)`                          | Succeeds if `expression` matches, but does not consume input.               | `epc_lookahead_l(list, "lookahead", expression_parser)`                     |
 | `not`       | `(expression)`                          | Succeeds if `expression` fails, fails if it succeeds. Does not consume input. | `epc_not_l(list, "not", expression_parser)`                               |
 | `skip`      | `(expression)`                          | Matches `expression` and consumes input, but does not add to CPT.           | `epc_skip_l(list, "skip", expression_parser)`                               |
-| `passthru`  | `(expression)`                          | Matches `expression` and promotes its content to the parent's CPT node.     | `epc_passthru_l(list, "passthru", expression_parser)`                       |
 | `one_of`    | `(string_literal)`                      | Matches any single character from the provided list string.                 | `epc_one_of_l(list, "one_of", "abc")`                                       |
 | `none_of`   | `(string_literal)`                      | Matches any single character NOT from the provided string.                  | `epc_none_of_l(list, "none_of", "abc")`                                     |
 

@@ -930,38 +930,6 @@ static inline epc_parser_t * epc_plus_l(epc_parser_list * list, char const * nam
 }
 
 /**
- * @brief Creates a parser that matches its child parser and promotes its result directly and adds it to the list.
- *
- * Acts as a transparent wrapper. It matches its `child_parser`
- * and returns the exact result (CPT node or error) of the `child_parser`.
- * This can be useful for assigning a name or AST action to an existing parser
- * without changing its CPT structure.
- * @param name The name of the parser for debugging/CPT.
- * @param child_parser The parser whose result will be passed through.
- * @return A new `parser_t` instance, or NULL on error.
- */
-EASY_PC_API epc_parser_t * epc_passthru(char const * name, epc_parser_t * child_parser);
-
-/**
- * @brief Creates a parser that matches its child parser and promotes its result directly and adds it to the list.
- *        This is a convenience wrapper for `epc_passthru()` that automatically adds the created
- *        parser to the provided `epc_parser_list`.
- *
- * Acts as a transparent wrapper. It matches its `child_parser`
- * and returns the exact result (CPT node or error) of the `child_parser`.
- * This can be useful for assigning a name or AST action to an existing parser
- * without changing its CPT structure.
- * @param list The parser list to add to.
- * @param name The name of the parser for debugging/CPT.
- * @param child_parser The parser whose result will be passed through.
- * @return A new `parser_t` instance, or NULL on error.
- */
-static inline epc_parser_t * epc_passthru_l(epc_parser_list * list, char const * name, epc_parser_t * child_parser)
-{
-    return epc_parser_list_add(list, epc_passthru(name, child_parser));
-}
-
-/**
  * @brief Creates a parser that matches the end of the input stream and adds it to the list.
  *
  * This parser succeeds only if there are no more characters to consume in the input.

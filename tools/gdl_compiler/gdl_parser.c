@@ -132,8 +132,6 @@ epc_parser_t * create_gdl_parser(epc_parser_list * l)
     epc_parser_t * p_chainr1            = epc_lexeme_l(l, "chainr1", p_chainr1_raw);
     epc_parser_t * p_skip_raw           = epc_string_l(l, "skip", "skip");
     epc_parser_t * p_skip               = epc_lexeme_l(l, "skip", p_skip_raw);
-    epc_parser_t * p_passthru_raw       = epc_string_l(l, "passthru", "passthru");
-    epc_parser_t * p_passthru           = epc_lexeme_l(l, "passthru", p_passthru_raw);
 
     epc_parser_t * terminal_no_arg_parser =
         epc_or_l(
@@ -162,7 +160,7 @@ epc_parser_t * create_gdl_parser(epc_parser_list * l)
 
     epc_parser_t * combinator_parser =
         epc_or_l(
-            l, "CombinatorKeyword", 16,
+            l, "CombinatorKeyword", 15,
             p_string_raw,
             p_char_range_raw,
             p_none_of_raw,
@@ -177,8 +175,7 @@ epc_parser_t * create_gdl_parser(epc_parser_list * l)
             p_lexeme_raw,
             p_chainl1_raw,
             p_chainr1_raw,
-            p_skip_raw,
-            p_passthru_raw
+            p_skip_raw
             );
     epc_parser_set_ast_action(combinator_parser, GDL_AST_ACTION_CREATE_KEYWORD);
 
@@ -316,16 +313,11 @@ epc_parser_t * create_gdl_parser(epc_parser_list * l)
         epc_and_l(l, "SkipCall", 4, p_skip, gdl_lparen, gdl_expression_arg, gdl_rparen);
     epc_parser_set_ast_action(skip_call, GDL_AST_ACTION_CREATE_SKIP_CALL);
 
-    epc_parser_t * passthru_call =
-        epc_and_l(l, "PassthruCall", 4, p_passthru, gdl_lparen, gdl_expression_arg, gdl_rparen);
-    epc_parser_set_ast_action(passthru_call, GDL_AST_ACTION_CREATE_PASSTHRU_CALL);
-
-
     epc_parser_t * gdl_combinator_call =
-        epc_or_l(l, "CombinatorCall", 13,
+        epc_or_l(l, "CombinatorCall", 12,
                  none_of_call, count_call,
                  between_call, delimited_call, lookahead_call, not_call, fail_call,
-                 oneof_call, lexeme_call, chainl1_call, chainr1_call, skip_call, passthru_call
+                 oneof_call, lexeme_call, chainl1_call, chainr1_call, skip_call
                 );
 
     // PrimaryExpression: terminal | char_range | combinator_call | '(' definition_expression ')'
