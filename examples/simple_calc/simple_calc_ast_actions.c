@@ -140,20 +140,28 @@ create_number_from_content_action(
     void * user_data
 )
 {
-    (void)children; (void)count; (void)user_data;
+    (void)children;
+    (void)count;
+
     ast_node_t * num_node = ast_node_alloc(AST_NODE_TYPE_NUMBER);
     if (num_node == NULL)
     {
         epc_ast_builder_set_error(ctx, "Failed to allocate AST number node");
         return;
     }
-    char num_str_buf[node->len + 1];
-    strncpy(num_str_buf,
-            epc_cpt_node_get_semantic_content(node),
-            epc_cpt_node_get_semantic_len(node)
-    );
-    num_str_buf[node->len] = '\0';
+
+    size_t content_len = epc_cpt_node_get_semantic_len(node);
+    char * num_str_buf = malloc(content_len + 1);
+    if (num_str_buf== NULL)
+    {
+        ast_node_free(num_node, user_data);
+        epc_ast_builder_set_error(ctx, "Failed to allocate AST number node buffer");
+        return;
+    }
+    strncpy(num_str_buf, epc_cpt_node_get_semantic_content(node), content_len);
+    num_str_buf[content_len] = '\0';
     num_node->data.number.value = strtod(num_str_buf, NULL);
+    free(num_str_buf);
     epc_ast_push(ctx, num_node);
 }
 
