@@ -101,7 +101,7 @@ struct epc_cpt_node_t
     int col;                              /**< @brief The column number in the input where this node's content starts (0-indexed). */
     epc_cpt_node_t ** children;           /**< @brief An array of pointers to child `pt_node_t`s, representing sub-matches. */
     int children_count;                   /**< @brief The number of children in the `children` array. */
-    epc_ast_semantic_action_t ast_config; /** @brief A copy of the ast action assigned to the associated parser that created the node. */
+    epc_ast_semantic_action_t ast_config; /**< @brief A copy of the ast action assigned to the associated parser that created the node. */
 };
 
 // The Result of a Parse Attempt

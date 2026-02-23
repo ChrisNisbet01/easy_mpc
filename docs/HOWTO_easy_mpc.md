@@ -19,7 +19,7 @@ This guide uses examples inspired by the `simple_ast_test.cpp` provided with the
     *   [`epc_and`](#epc_and)
     *   [`epc_or`](#epc_or)
     *   [`epc_plus` (one or more) and `epc_many` (zero or more)](#epc_plus-one-or-more-and-epc_many-zero-or-more)
-*   [`epc_chainl1` (Left-Associative Chain) and `epc_chainr1` (Right-Associative Chain)](#epc_chainl1-left-associative-chain-and-epc_chainr1-right-associative-chain)
+    *   [`epc_chainl1` (Left-Associative Chain) and `epc_chainr1` (Right-Associative Chain)](#epc_chainl1-left-associative-chain-and-epc_chainr1-right-associative-chain)
     *   [`epc_skip`](#epc_skip)
     *   [`epc_eoi` (End Of Input)](#epc_eoi-end-of-input)
 5.  [Defining Your Grammar](#5-defining-your-grammar)
