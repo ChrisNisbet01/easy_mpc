@@ -8,6 +8,7 @@
 // Internal struct for the visitor's user_data
 typedef struct
 {
+    char const * input_start;
     char * buffer;
     size_t current_offset;
     size_t buffer_capacity;
@@ -62,17 +63,21 @@ static void ensure_buffer_capacity(cpt_printer_data_t * data, size_t needed_spac
 static void cpt_printer_enter_node(epc_cpt_node_t * node, void * user_data)
 {
     cpt_printer_data_t * data = (cpt_printer_data_t *)user_data;
+    // include content and length
+    epc_line_col_t position = epc_calculate_line_and_column(data->input_start, node->content);
+    char const * scontent = epc_cpt_node_get_semantic_content(node);
+    size_t scontent_len = epc_cpt_node_get_semantic_len(node);
+    epc_line_col_t sposition = epc_calculate_line_and_column(data->input_start, scontent);
     int required_len;
-
     size_t estimated_line_len = data->indent_level * 4 +
                                 strlen(node->tag) + strlen(node->name) +
         5  + // <tag> + (<name>) ()
-                                (node->content && node->len > 0 ? node->len + 3 : 0) + // 'content'
-                                num_to_str_len(node->len) + 7 + 1; // (len=X)\n
+                                (node->content && node->len > 0 ? node->len + 3 : 0)
+                                + num_to_str_len(node->len) // 'content'
+                                + num_to_str_len(position.line)
+                                + num_to_str_len(position.col)
+                                + 20 + 1; // (line=X, col=X, len=X)\n
 
-    // include semantic content and length
-    char const * scontent = epc_cpt_node_get_semantic_content(node);
-    size_t scontent_len = epc_cpt_node_get_semantic_len(node);
     if (scontent == node->content && scontent_len == node->len)
     {
         scontent = NULL;
@@ -80,8 +85,11 @@ static void cpt_printer_enter_node(epc_cpt_node_t * node, void * user_data)
     }
     if (scontent != NULL && scontent_len > 0)
     {
-        estimated_line_len += scontent_len + 3 + // 'content'
-        num_to_str_len(scontent_len) + 7 + 1; // (len=X)\n
+        estimated_line_len += scontent_len + 3
+        + num_to_str_len(scontent_len) // 'content'
+        + num_to_str_len(sposition.line)
+        + num_to_str_len(sposition.col)
+        + 20 + 1; // (line=X, col=X, len=X)\n
     }
 
 
@@ -122,10 +130,10 @@ static void cpt_printer_enter_node(epc_cpt_node_t * node, void * user_data)
         data->buffer[data->current_offset++] = '\'';
     }
 
-    // Length: (len=X)
+    // Line/Col/Length: (line=X, col=X, len=X)
     required_len = snprintf(data->buffer + data->current_offset,
                             data->buffer_capacity - data->current_offset,
-                            " (len=%zu)", node->len);
+                            " (line=%zu, col=%zu, len=%zu)", position.line, position.col, node->len);
     if (required_len < 0 || (size_t)required_len >= (data->buffer_capacity - data->current_offset))
     {
         data->current_offset = data->buffer_capacity - 1; // Mark as full to prevent further writes
@@ -136,15 +144,17 @@ static void cpt_printer_enter_node(epc_cpt_node_t * node, void * user_data)
 
     if (scontent != NULL && scontent_len > 0)
     {
+        // Semantic content: 'scontent'
         data->buffer[data->current_offset++] = ' ';
         data->buffer[data->current_offset++] = '\'';
         strncpy(data->buffer + data->current_offset, scontent, scontent_len);
         data->current_offset += scontent_len;
         data->buffer[data->current_offset++] = '\'';
 
+        // Line/Col/Length: (line=X, col=X, len=X)
         required_len = snprintf(data->buffer + data->current_offset,
                                 data->buffer_capacity - data->current_offset,
-                                " (len=%zu)", scontent_len);
+                                " (line=%zu, col=%zu, len=%zu)", sposition.line, sposition.col, scontent_len);
         if (required_len < 0 || (size_t)required_len >= (data->buffer_capacity - data->current_offset))
         {
             data->current_offset = data->buffer_capacity - 1; // Mark as full to prevent further writes
@@ -179,7 +189,9 @@ epc_cpt_to_string_private(epc_cpt_node_t * node, int initial_indent_level)
     }
 
     // Initialize printer data
-    cpt_printer_data_t printer_data;
+    cpt_printer_data_t printer_data = {0};
+    // Assume that the top node's content points to the start of the input.
+    printer_data.input_start = epc_cpt_node_get_content(node);
     printer_data.current_offset = 0;
     printer_data.indent_level = initial_indent_level;
 
@@ -224,11 +236,7 @@ epc_cpt_to_string_private(epc_cpt_node_t * node, int initial_indent_level)
         }
     }
 
-    // Free temporary buffer
-    if (printer_data.buffer)
-    {
-        free(printer_data.buffer);
-    }
+    free(printer_data.buffer);
 
     return final_string;
 }

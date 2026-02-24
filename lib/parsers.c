@@ -151,16 +151,13 @@ epc_parser_error_free(epc_parser_error_t * error)
     free((char *)error->found);
     free(error);
 }
-typedef struct line_col_calc_result_t
-{
-    size_t line;
-    size_t col;
-} line_column_calc_result_t;
 
-static line_column_calc_result_t
-calculate_line_and_column(char const * start, char const * current)
+EASY_PC_HIDDEN
+epc_line_col_t
+epc_calculate_line_and_column(char const * start, char const * current)
 {
-    line_column_calc_result_t res = {0};
+    epc_line_col_t res = {0};
+
     if (start == NULL || current == NULL)
     {
         return res;
@@ -208,10 +205,7 @@ epc_parser_error_alloc(
     }
 
     error->input_position = current;
-    line_column_calc_result_t res = calculate_line_and_column(input_start, current);
-
-    error->line = res.line;
-    error->col = res.col;
+    error->position = epc_calculate_line_and_column(input_start, current);
 
     error->message = strdup(message != NULL ? message : "");
     error->expected = strdup(expected != NULL ? expected : "");

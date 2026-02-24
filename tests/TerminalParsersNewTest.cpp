@@ -1,6 +1,6 @@
 #include "CppUTest/TestHarness.h"
 
-#include "easy_pc/easy_pc.h"
+#include "easy_pc_private.h"
 
 #include <stdio.h>
 #include <string.h>

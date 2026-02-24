@@ -67,7 +67,7 @@ TEST(CptPrinter, PrintsSingleCharNode)
     CHECK_TRUE(printed_cpt != NULL);
 
     const char* expected_output =
-        "<char> (char_parser) 'a' (len=1)\n";
+        "<char> (char_parser) 'a' (line=0, col=0, len=1)\n";
     STRCMP_EQUAL(expected_output, printed_cpt);
 
     free(printed_cpt);
@@ -84,10 +84,10 @@ TEST(CptPrinter, PrintsSimpleAndNode)
     CHECK_TRUE(printed_cpt != NULL);
 
     const char* expected_output =
-        "<and> (and_parser) 'abc' (len=3)\n"
-        "    <char> (char_parser) 'a' (len=1)\n"
-        "    <char> (char_parser) 'b' (len=1)\n"
-        "    <char> (char_parser) 'c' (len=1)\n";
+        "<and> (and_parser) 'abc' (line=0, col=0, len=3)\n"
+        "    <char> (char_parser) 'a' (line=0, col=0, len=1)\n"
+        "    <char> (char_parser) 'b' (line=0, col=1, len=1)\n"
+        "    <char> (char_parser) 'c' (line=0, col=2, len=1)\n";
     STRCMP_EQUAL(expected_output, printed_cpt);
 
     free(printed_cpt);
@@ -105,11 +105,11 @@ TEST(CptPrinter, PrintsAndNodeWithNestedOr)
     CHECK_TRUE(printed_cpt != NULL);
 
     const char* expected_output =
-        "<and> (and_parser) '1+2' (len=3)\n"
-        "    <digit> (digit_parser) '1' (len=1)\n"
-        "    <or> (or_parser) '+' (len=1)\n"
-        "        <char> (char_parser) '+' (len=1)\n"
-        "    <digit> (digit_parser) '2' (len=1)\n";
+        "<and> (and_parser) '1+2' (line=0, col=0, len=3)\n"
+        "    <digit> (digit_parser) '1' (line=0, col=0, len=1)\n"
+        "    <or> (or_parser) '+' (line=0, col=1, len=1)\n"
+        "        <char> (char_parser) '+' (line=0, col=1, len=1)\n"
+        "    <digit> (digit_parser) '2' (line=0, col=2, len=1)\n";
     STRCMP_EQUAL(expected_output, printed_cpt);
 
     free(printed_cpt);
@@ -123,7 +123,7 @@ TEST(CptPrinter, PrintsSingleSkipNodeWithTwoSpaces)
     CHECK_TRUE(printed_cpt != NULL);
 
     const char* expected_output =
-        "<skip> (skip_parser) '  ' (len=2)\n";
+        "<skip> (skip_parser) '  ' (line=0, col=0, len=2)\n";
     STRCMP_EQUAL(expected_output, printed_cpt);
 
     free(printed_cpt);
@@ -137,7 +137,7 @@ TEST(CptPrinter, PrintsSingleSkipNodeWithSingleSpace)
     CHECK_TRUE(printed_cpt != NULL);
 
     const char* expected_output =
-        "<skip> (skip_parser) ' ' (len=1)\n";
+        "<skip> (skip_parser) ' ' (line=0, col=0, len=1)\n";
     STRCMP_EQUAL(expected_output, printed_cpt);
 
     free(printed_cpt);

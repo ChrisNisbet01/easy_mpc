@@ -5,6 +5,27 @@
 
 #include <stdarg.h>
 
+// The Parse Tree Node
+/**
+ * @brief Represents a node in the Concrete Parse Tree (CPT).
+ *
+ * Each `pt_node_t` stores information about a successfully parsed segment
+ * of the input, including its type (tag), the actual content matched,
+ * its length, and its hierarchical relationship to other nodes (children).
+ */
+struct epc_cpt_node_t
+{
+    const char * tag;                     /**< @brief A string tag identifying the type of this node (e.g., "char", "string", "and"). */
+    const char * name;                    /**< @brief The name assigned to the parser that generated this node, for debugging/identification. */
+    const char * content;                 /**< @brief A pointer to the start of the matched substring in the original input (or within the parser itself in the case of epc_succeed()). */
+    size_t len;                           /**< @brief The length of the matched substring. */
+    size_t semantic_start_offset;         /**< @brief Offset from `content` to the start of the semantically relevant part. */
+    size_t semantic_end_offset;           /**< @brief Length from the end of `content` to exclude from the semantically relevant part. */
+    epc_cpt_node_t ** children;           /**< @brief An array of pointers to child `pt_node_t`s, representing sub-matches. */
+    int children_count;                   /**< @brief The number of children in the `children` array. */
+    epc_ast_semantic_action_t ast_config; /**< @brief A copy of the ast action assigned to the associated parser that created the node. */
+};
+
 // Internal types for AST builder stack management
 typedef enum
 {
@@ -164,4 +185,8 @@ parser_furthest_error_copy(epc_parser_ctx_t * ctx);
 
 void
 epc_parser_free(epc_parser_t * parser);
+
+EASY_PC_HIDDEN
+epc_line_col_t
+epc_calculate_line_and_column(char const * start, char const * current);
 

@@ -299,3 +299,25 @@ epc_cpt_node_get_semantic_len(epc_cpt_node_t * node)
     return effective_len;
 }
 
+EASY_PC_API const char *
+epc_cpt_node_get_content(epc_cpt_node_t * node)
+{
+    if (node == NULL || node->content == NULL)
+    {
+        return NULL;
+    }
+
+    return node->content;
+}
+
+EASY_PC_API size_t
+epc_cpt_node_get_len(epc_cpt_node_t * node)
+{
+    if (node == NULL)
+    {
+        return 0;
+    }
+
+    return node->len;
+}
+

@@ -5,7 +5,13 @@
 // Basic Terminals
 Double = double;
 Number = lexeme(Double) @AST_ACTION_CREATE_NUMBER_FROM_CONTENT;
-Identifier = lexeme((alpha | underscore) (alpha | digit | underscore)*) @AST_ACTION_CREATE_IDENTIFIER;
+Underscore = '_';
+Alpha = alpha;
+Digit = digit;
+IDPrefix = Alpha | Underscore;
+IDRest = (IDPrefix | Digit)*;
+FullID = IDPrefix IDRest;
+Identifier = lexeme(FullID) @AST_ACTION_CREATE_IDENTIFIER;
 
 // Operators
 AddOp = lexeme('+');
@@ -31,13 +37,14 @@ FunctionArgs = NonEmptyFunctionArgs?;
 
 // Rules
 FunctionCall = Identifier LParen FunctionArgs RParen @AST_ACTION_CREATE_FUNCTION_CALL;
+ParenthesisedExpression = LParen Expression RParen;
 
 // Primary expressions: numbers, identifiers (constants/variables), function calls, parenthesized expressions
 // Note: 'LParen Expression RParen' directly handles parenthesized expressions.
 Primary = Number
         | Identifier
         | FunctionCall
-        | LParen Expression RParen
+        | ParenthesisedExpression
         ;
 
 // Term and Expression define the order of operations using chainl1 for left-associative parsing.

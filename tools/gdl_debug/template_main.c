@@ -16,7 +16,7 @@ run_parse(epc_parser_t * parser, const char * input_string)
     {
         epc_parser_error_t * err = session.result.data.error;
         fprintf(stderr, "Parse Error: %s\n", err->message);
-        fprintf(stderr, "At line %zu, col %zu\n", err->line + 1, err->col + 1);
+        fprintf(stderr, "At line %zu, col %zu\n", err->position.line + 1, err->position.col + 1);
         fprintf(stderr, "Expected: %s\n", err->expected ? err->expected : "unknown");
         fprintf(stderr, "Found: %s\n", err->found ? err->found : "unknown");
     }

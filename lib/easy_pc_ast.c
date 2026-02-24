@@ -439,7 +439,7 @@ epc_parse_and_build_ast(
             (int)(input + strlen(input) - err->input_position), err->input_position,
             err->expected ? err->expected : "N/A",
             (int)strlen(err->found), err->found ? err->found : "N/A",
-            err->line, err->col
+            err->position.line, err->position.col
         );
         if (len < 0)
         {

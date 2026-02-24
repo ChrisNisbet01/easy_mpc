@@ -47,6 +47,13 @@ typedef struct epc_cpt_node_t epc_cpt_node_t;
 typedef struct epc_parser_ctx_t epc_parser_ctx_t;
 typedef struct epc_parser_list epc_parser_list;
 
+// line and column information.
+typedef struct epc_line_col_t
+{
+    size_t line;
+    size_t col;
+} epc_line_col_t;
+
 // Error Handling struct
 /**
  * @brief Represents a detailed parsing error.
@@ -59,8 +66,7 @@ typedef struct epc_parser_error_t
 {
     const char * message;        /**< @brief A descriptive error message. */
     const char * input_position; /**< @brief Pointer to the exact position in the input string where the error occurred. */
-    size_t line;                 /**< @brief The line number in the input where the error occurred (0-indexed, calculated later). */
-    size_t col;                  /**< @brief The column number in the input where the error occurred (0-indexed, calculated later). */
+    epc_line_col_t position;     /**< @brief Line and column if the input where the error occurred (0-indexed, calculated later). */
     const char * expected;       /**< @brief A string describing what the parser expected at the error position. */
     const char * found;          /**< @brief A string describing what the parser actually found at the error position. */
 } epc_parser_error_t;
@@ -80,29 +86,6 @@ typedef struct
                       *          Concrete values for actions are defined elsewhere (e.g., in ast_builder.h).
                       */
 } epc_ast_semantic_action_t;
-
-// The Parse Tree Node
-/**
- * @brief Represents a node in the Concrete Parse Tree (CPT).
- *
- * Each `pt_node_t` stores information about a successfully parsed segment
- * of the input, including its type (tag), the actual content matched,
- * its length, and its hierarchical relationship to other nodes (children).
- */
-struct epc_cpt_node_t
-{
-    const char * tag;                     /**< @brief A string tag identifying the type of this node (e.g., "char", "string", "and"). */
-    const char * name;                    /**< @brief The name assigned to the parser that generated this node, for debugging/identification. */
-    const char * content;                 /**< @brief A pointer to the start of the matched substring in the original input (or within the parser itself in the case of epc_succeed()). */
-    size_t len;                           /**< @brief The length of the matched substring. */
-    size_t semantic_start_offset;         /**< @brief Offset from `content` to the start of the semantically relevant part. */
-    size_t semantic_end_offset;           /**< @brief Length from the end of `content` to exclude from the semantically relevant part. */
-    int line;                             /**< @brief The line number in the input where this node's content starts (0-indexed). */
-    int col;                              /**< @brief The column number in the input where this node's content starts (0-indexed). */
-    epc_cpt_node_t ** children;           /**< @brief An array of pointers to child `pt_node_t`s, representing sub-matches. */
-    int children_count;                   /**< @brief The number of children in the `children` array. */
-    epc_ast_semantic_action_t ast_config; /**< @brief A copy of the ast action assigned to the associated parser that created the node. */
-};
 
 // The Result of a Parse Attempt
 typedef struct
@@ -1067,6 +1050,32 @@ epc_cpt_node_get_semantic_content(epc_cpt_node_t * node);
  */
 EASY_PC_API size_t
 epc_cpt_node_get_semantic_len(epc_cpt_node_t * node);
+
+/**
+ * @brief Retrieves the content from a CPT node.
+ *
+ * This function returns a pointer to the start of the node's full `content`.
+ * Usually the same as the semantic content, except for the epc_lexeme parser,
+ * which excludes leading/trailing whitespace.
+ *
+ * @param node A pointer to the `epc_cpt_node_t`.
+ * @return A `const char*` pointer to the content.
+ */
+EASY_PC_API const char *
+epc_cpt_node_get_content(epc_cpt_node_t * node);
+
+/**
+ * @brief Retrieves the length of the content from a CPT node.
+ *
+ * This function returns the length of the the node's full `content`.
+ * Usually the same as the semantic content length, except for the epc_lexeme
+ * parser, which excludes leading/trailing whitespace.
+ *
+ * @param node A pointer to the `epc_cpt_node_t`.
+ * @return A `size_t` representing the length of the content.
+ */
+EASY_PC_API size_t
+epc_cpt_node_get_len(epc_cpt_node_t * node);
 
 /**
  * @brief Prints a Concrete Parse Tree (CPT) to a dynamically allocated string.

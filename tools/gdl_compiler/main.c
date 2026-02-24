@@ -137,8 +137,8 @@ main(int argc, char ** argv)
         fprintf(stderr, "    Expected %s, found: %s at line %zu, col %zu'\n",
                 session.result.data.error->expected,
                 session.result.data.error->found,
-                session.result.data.error->line,
-                session.result.data.error->col
+                session.result.data.error->position.line,
+                session.result.data.error->position.col
                );
         exit_code = EXIT_FAILURE;
     }
