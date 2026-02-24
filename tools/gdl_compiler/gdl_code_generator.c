@@ -680,6 +680,20 @@ generate_expression_code(
 
     switch (expression_node->type)
     {
+    case GDL_AST_NODE_TYPE_COMBINATOR_COUNT:
+        fprintf(source_file,
+                "epc_count_l(list, %s%s%s, %llu, ",
+                q, expr_name, q,
+                expression_node->data.count_call.count_node->data.number_literal.value
+        );
+        if (!generate_expression_code(source_file, expression_node->data.count_call.expression, indent_level + 1, rule_list, NULL))
+        {
+            return false;
+        }
+        fprintf(source_file, ")");
+
+        break;
+
     case GDL_AST_NODE_TYPE_STRING_LITERAL:
         fprintf(source_file, "epc_string_l(list, %s%s%s, \"%s\")", q, expr_name, q, expression_node->data.string_literal.value);
         break;
