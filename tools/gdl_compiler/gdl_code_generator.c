@@ -745,6 +745,10 @@ generate_expression_code(
         {
             fprintf(source_file, "epc_cpp_comment_l(list, \"%s\")", keyword_name);
         }
+        else if (strcmp(keyword_name, "bash_comment") == 0)
+        {
+            fprintf(source_file, "epc_bash_comment_l(list, \"%s\")", keyword_name);
+        }
         // TODO: Add more keyword mappings as needed
         else
         {
