@@ -1135,6 +1135,62 @@ epc_cpp_comment(char const * name)
     return p;
 }
 
+// --- C++ Comment Parser Implementation ---
+// Matches "//" followed by any characters until a newline or EOF.
+static epc_parse_result_t
+pbash_comment_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset)
+{
+    (void)self;
+    epc_parser_list * l = epc_parser_list_create();
+
+    epc_parse_result_t sub_result;
+    epc_parser_t * hash = epc_string_l(l, "hash", "#");
+    epc_parser_t * any_char_except_newline = epc_none_of_l(l, "any_char_except_newline", "\n");
+    epc_parser_t * many_chars = epc_many_l(l, "many_chars", any_char_except_newline);
+    epc_parser_t * newline_parser = epc_char_l(l, "newline", '\n');
+    epc_parser_t * eoi_parser = epc_eoi_l(l, "eoi");
+    epc_parser_t * line_end = epc_or_l(l, "line_end", 2, newline_parser, eoi_parser);
+    epc_parser_t * comment_parser = epc_and_l(l, "cpp_comment_sequence", 3, hash, many_chars, line_end);
+
+    sub_result = parse(comment_parser, ctx, input_offset);
+
+    epc_parse_result_t result;
+    if (sub_result.is_error)
+    {
+        result = sub_result;
+    }
+    else
+    {
+        epc_cpt_node_t * node= epc_node_alloc(self, "bash_comment");
+        if (node == NULL)
+        {
+            return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+        }
+
+        node->content = sub_result.data.success->content;
+        node->len = sub_result.data.success->len;
+        result = epc_parser_success_result(node);
+    }
+
+    epc_parser_list_free(l);
+
+    return result;
+}
+
+epc_parser_t *
+epc_bash_comment(char const * name)
+{
+    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "bash_comment");
+    if (p == NULL)
+    {
+        return NULL;
+    }
+    p->parse_fn = pbash_comment_parse_fn;
+    p->expected_value = "# Bash style comment";
+
+    return p;
+}
+
 static epc_parser_t *
 vepc_and(char const * name, int count, va_list args)
 {
