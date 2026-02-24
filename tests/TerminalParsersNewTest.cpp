@@ -378,3 +378,67 @@ TEST(TerminalParsersNew, OneOf_FailsWithEmptySet)
     check_failure(session, "Character not found in set");
 }
 
+// --- epc_cpp_comment tests ---
+TEST(TerminalParsersNew, CppComment_MatchesSimpleComment)
+{
+    epc_parser_list * list = epc_parser_list_create();
+    epc_parser_t* p = epc_cpp_comment_l(list, NULL);
+    epc_parse_session_t session = epc_parse_input(p, "// A simple comment\nNext line");
+    check_success(session, "cpp_comment", "// A simple comment\n", 20);
+    epc_parser_list_free(list);
+}
+
+TEST(TerminalParsersNew, CppComment_MatchesCommentAtEOF)
+{
+    epc_parser_list * list = epc_parser_list_create();
+    epc_parser_t* p = epc_cpp_comment_l(list, NULL);
+    epc_parse_session_t session = epc_parse_input(p, "// Comment at EOF");
+    check_success(session, "cpp_comment", "// Comment at EOF", 17);
+    epc_parser_list_free(list);
+}
+
+TEST(TerminalParsersNew, CppComment_MatchesEmptyComment)
+{
+    epc_parser_list * list = epc_parser_list_create();
+    epc_parser_t* p = epc_cpp_comment_l(list, NULL);
+    epc_parse_session_t session = epc_parse_input(p, "//\nNext line");
+    check_success(session, "cpp_comment", "//\n", 3);
+    epc_parser_list_free(list);
+}
+
+TEST(TerminalParsersNew, CppComment_FailsOnNoDoubleSlash)
+{
+    epc_parser_list * list = epc_parser_list_create();
+    epc_parser_t* p = epc_cpp_comment_l(list, NULL);
+    epc_parse_session_t session = epc_parse_input(p, "A regular line\n");
+    check_failure(session, "Unexpected string");
+    epc_parser_list_free(list);
+}
+
+TEST(TerminalParsersNew, CppComment_FailsOnSingleSlash)
+{
+    epc_parser_list * list = epc_parser_list_create();
+    epc_parser_t* p = epc_cpp_comment_l(list, NULL);
+    epc_parse_session_t session = epc_parse_input(p, "/ A single slash comment\n");
+    check_failure(session, "Unexpected string");
+    epc_parser_list_free(list);
+}
+
+TEST(TerminalParsersNew, CppComment_FailsOnEmptyInput)
+{
+    epc_parser_list * list = epc_parser_list_create();
+    epc_parser_t* p = epc_cpp_comment_l(list, NULL);
+    epc_parse_session_t session = epc_parse_input(p, "");
+    check_failure(session, "Unexpected end of input");
+    epc_parser_list_free(list);
+}
+
+TEST(TerminalParsersNew, CppComment_FailsOnNullInput)
+{
+    epc_parser_list * list = epc_parser_list_create();
+    epc_parser_t* p = epc_cpp_comment_l(list, NULL);
+    epc_parse_session_t session = epc_parse_input(p, NULL);
+    check_failure(session, "Input string is NULL");
+    epc_parser_list_free(list);
+}
+
