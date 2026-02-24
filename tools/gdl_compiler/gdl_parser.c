@@ -33,10 +33,19 @@ epc_parser_t * create_gdl_parser(epc_parser_list * l)
 
     epc_parser_t * gdl_escaped_quote = epc_string_l(l, "EscapedDoubleQuote", "\\\"");
     epc_parser_t * gdl_escaped_backslash_str = epc_string_l(l, "EscapedBackslashStr", "\\\\");
-    epc_parser_t * gdl_any_char_except_quote_backslash =
-                                                         epc_none_of_l(l, "AnyCharExceptQuoteBackslash", "\"\\");
+    epc_parser_t * gdl_escaped_newline_str = epc_string_l(l, "EscapedNewlineStr", "\\n");
+    epc_parser_t * gdl_escaped_tab_str = epc_string_l(l, "EscapedNewlineStr", "\\t");
+    epc_parser_t * gdl_escaped_cr_str = epc_string_l(l, "EscapedNewlineStr", "\\r");
+    epc_parser_t * gdl_any_char_except_quote_backslash_newline_tab_cr =
+        epc_none_of_l(l, "AnyCharExceptQuoteBackslashNewlineTabCR", "\"\\\n\t\r");
     epc_parser_t * gdl_string_char_option =
-                                            epc_or_l(l, "StringCharOption", 3, gdl_escaped_quote, gdl_escaped_backslash_str, gdl_any_char_except_quote_backslash);
+        epc_or_l(l, "StringCharOption", 6,
+                 gdl_escaped_quote,
+                 gdl_escaped_backslash_str,
+                 gdl_escaped_newline_str,
+                 gdl_escaped_tab_str,
+                 gdl_escaped_cr_str,
+                 gdl_any_char_except_quote_backslash_newline_tab_cr);
     epc_parser_t * gdl_string_content = epc_many_l(l, "StringContent", gdl_string_char_option);
 
     epc_parser_t * temp_string_literal_raw =
