@@ -1,6 +1,7 @@
 #include "gdl_parser.h"
 #include "gdl_compiler_ast_actions.h"
 #include "gdl_code_generator.h"
+#include "gdl_bootstrap_generator.h"
 
 #include <easy_pc/easy_pc.h>
 
@@ -78,6 +79,10 @@ main(int argc, char ** argv)
                 }
             }
         }
+        else if (strcmp(argv[i], "--bootstrap-ast") == 0)
+        {
+            // This flag is handled after parsing, ignore it here.
+        }
         else if (gdl_filepath == NULL)
         {
             gdl_filepath = argv[i];
@@ -101,7 +106,7 @@ main(int argc, char ** argv)
         return EXIT_FAILURE;
     }
 
-    printf("Parsing: '%s'\n", gdl_content);
+    //printf("Parsing: '%s'\n", gdl_content);
     epc_parser_list * gdl_parser_list = epc_parser_list_create();
     if (gdl_parser_list == NULL)
     {
@@ -194,6 +199,18 @@ main(int argc, char ** argv)
                 {
                     printf("C code generation completed successfully.\n");
                 }
+
+                // Check for bootstrap flag and call the generator
+                for (int i = 1; i < argc; ++i)
+                {
+                    if (strcmp(argv[i], "--bootstrap-ast") == 0)
+                    {
+                        printf("AST bootstrap files generation requested.\n");
+                        generate_ast_bootstrap_files((gdl_ast_node_t *)ast_build_result.ast_root, base_name, output_dir);
+                        break;
+                    }
+                }
+
                 gdl_ast_node_free((gdl_ast_node_t *)ast_build_result.ast_root, NULL);
             }
         }

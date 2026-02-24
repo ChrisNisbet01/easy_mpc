@@ -20,12 +20,6 @@ typedef struct
     gdl_rule_info_t * tail;
 } gdl_rule_list_t;
 
-typedef struct semantic_action_node
-{
-    char * name;
-    struct semantic_action_node * next;
-} semantic_action_node_t;
-
 
 // --- Helper Functions for C Code Generation ---
 
@@ -136,8 +130,8 @@ add_unique_action_name(semantic_action_node_t ** head, const char * name)
     *head = new_node;
 }
 
-static void
-free_semantic_action_names(semantic_action_node_t * head)
+void
+gdl_free_semantic_action_list(semantic_action_node_t * head)
 {
     semantic_action_node_t * current = head;
     while (current != NULL)
@@ -147,6 +141,34 @@ free_semantic_action_names(semantic_action_node_t * head)
         free(current);
         current = next;
     }
+}
+
+// New public function to collect actions
+semantic_action_node_t *
+gdl_collect_semantic_actions(gdl_ast_node_t * ast_root)
+{
+    semantic_action_node_t * action_names_head = NULL;
+
+    if (ast_root == NULL || ast_root->type != GDL_AST_NODE_TYPE_PROGRAM)
+    {
+        return NULL;
+    }
+
+    gdl_ast_list_node_t * current_rule_node = ast_root->data.program.rules.head;
+    while (current_rule_node != NULL)
+    {
+        gdl_ast_node_t * rule_def = current_rule_node->item;
+        if (rule_def->type == GDL_AST_NODE_TYPE_RULE_DEFINITION)
+        {
+            if (rule_def->data.rule_def.semantic_action != NULL &&
+                rule_def->data.rule_def.semantic_action->data.semantic_action.action_name != NULL)
+            {
+                add_unique_action_name(&action_names_head, rule_def->data.rule_def.semantic_action->data.semantic_action.action_name);
+            }
+        }
+        current_rule_node = current_rule_node->next;
+    }
+    return action_names_head;
 }
 
 static bool
@@ -167,22 +189,7 @@ gdl_generate_semantic_actions_header(gdl_ast_node_t * ast_root, const char * bas
 
     fprintf(actions_header_file, "typedef enum {\n");
 
-    semantic_action_node_t * action_names_head = NULL;
-
-    gdl_ast_list_node_t * current_rule_node = ast_root->data.program.rules.head;
-    while (current_rule_node != NULL)
-    {
-        gdl_ast_node_t * rule_def = current_rule_node->item;
-        if (rule_def->type == GDL_AST_NODE_TYPE_RULE_DEFINITION)
-        {
-            if (rule_def->data.rule_def.semantic_action != NULL &&
-                rule_def->data.rule_def.semantic_action->data.semantic_action.action_name != NULL)
-            {
-                add_unique_action_name(&action_names_head, rule_def->data.rule_def.semantic_action->data.semantic_action.action_name);
-            }
-        }
-        current_rule_node = current_rule_node->next;
-    }
+    semantic_action_node_t * action_names_head = gdl_collect_semantic_actions(ast_root);
 
     // Print collected action names (reverse order because of prepend)
     semantic_action_node_t * current_action_name = action_names_head;
@@ -220,7 +227,7 @@ gdl_generate_semantic_actions_header(gdl_ast_node_t * ast_root, const char * bas
     fclose(actions_header_file);
     fprintf(stdout, "Generated: %s\n", actions_header_filepath);
 
-    free_semantic_action_names(action_names_head); // Free the collected names
+    gdl_free_semantic_action_list(reversed_head); // Free the collected names
     return true;
 }
 
