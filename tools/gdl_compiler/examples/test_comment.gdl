@@ -1,1 +1,4 @@
-CommentTest = cpp_comment eoi;
+NonCommentChar = not(lookahead("//")) noneof("\n");
+NonCommentText = NonCommentChar*;
+LineWithCppComment = NonCommentText cpp_comment* eoi;
+
