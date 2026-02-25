@@ -699,16 +699,12 @@ generate_expression_code(
         break;
 
     case GDL_AST_NODE_TYPE_CHAR_LITERAL:
-        /* TODO: Likely needs support for \n, \t, \r. \' as well. */
-        if (expression_node->data.char_literal.value == '\\')
-        {
-            fprintf(source_file, "epc_char_l(list, %s%s%s, '\\\\')", q, expr_name, q);
-        }
-        else
-        {
-            fprintf(source_file, "epc_char_l(list, %s%s%s, '%c')", q, expr_name, q, expression_node->data.char_literal.value);
-        }
+    {
+        char * ch = expression_node->data.char_literal.value; /* Acutally a string, to deal with escaping. */
+
+        fprintf(source_file, "epc_char_l(list, %s%s%s, '%s')", q, expr_name, q, ch);
         break;
+    }
 
     case GDL_AST_NODE_TYPE_IDENTIFIER_REF:
     {

@@ -208,9 +208,12 @@ gdl_ast_node_free(void * node_ptr, void * user_data)
         gdl_ast_list_free_recursive(&node->data.argument_list, user_data);
         break;
 
+    case GDL_AST_NODE_TYPE_CHAR_LITERAL:   // The 'char' is actually a string, because it may contain escape chars.
+        free(node->data.char_literal.value);
+        break;
+
         /* The following nod types have no dynamic data to free. */
     case GDL_AST_NODE_TYPE_NUMBER_LITERAL: // No dynamic data to free
-    case GDL_AST_NODE_TYPE_CHAR_LITERAL:   // No dynamic data to free
     case GDL_AST_NODE_TYPE_CHAR_RANGE:     // No dynamic data to free
     case GDL_AST_NODE_TYPE_REPETITION_OPERATOR: // No dynamic data to free
     case GDL_AST_NODE_TYPE_RAW_CHAR_LITERAL: // No dynamic data to free
@@ -273,8 +276,8 @@ handle_create_identifier_ref(
     if (ast_node)
     {
         ast_node->data.identifier_ref.name = get_cpt_node_text(node);
+        epc_ast_push(ctx, ast_node);
     }
-    epc_ast_push(ctx, ast_node);
 }
 
 static void
@@ -311,8 +314,8 @@ handle_create_keyword(
     if (ast_node)
     {
         ast_node->data.keyword.name = get_cpt_node_text(node);
+        epc_ast_push(ctx, ast_node);
     }
-    epc_ast_push(ctx, ast_node);
 }
 
 static void
@@ -350,8 +353,8 @@ handle_create_terminal(
     if (ast_node)
     {
         ast_node->data.terminal.expression = terminal_expression_node;
+        epc_ast_push(ctx, ast_node);
     }
-    epc_ast_push(ctx, ast_node);
 }
 
 static void
@@ -454,7 +457,10 @@ handle_create_optional_semantic_action(
         /* Create an empty semantic action node with no semantic action name to push onto the stack. */
         ast_node = gdl_ast_node_alloc(ctx, GDL_AST_NODE_TYPE_SEMANTIC_ACTION);
     }
-    epc_ast_push(ctx, ast_node);
+    if (ast_node != NULL)
+    {
+        epc_ast_push(ctx, ast_node);
+    }
 }
 
 static void
@@ -491,8 +497,8 @@ handle_create_repetition_operator(
     if (ast_node)
     {
         ast_node->data.repetition_op.operator_char = epc_cpt_node_get_semantic_content(node)[0];
+        epc_ast_push(ctx, ast_node);
     }
-    epc_ast_push(ctx, ast_node);
 }
 
 static void
@@ -529,8 +535,8 @@ handle_create_number_literal(
     if (ast_node)
     {
         ast_node->data.number_literal.value = atoll(epc_cpt_node_get_semantic_content(node));
+        epc_ast_push(ctx, ast_node);
     }
-    epc_ast_push(ctx, ast_node);
 }
 
 static void
@@ -563,21 +569,27 @@ handle_create_char_literal(
         return;
     }
 
-    gdl_ast_node_t * ast_node = gdl_ast_node_alloc(ctx, GDL_AST_NODE_TYPE_CHAR_LITERAL);
-    if (ast_node)
+    size_t len = epc_cpt_node_get_semantic_len(node);
+    char const * content = epc_cpt_node_get_semantic_content(node);
+
+    /* Should be either a single char or an escaped char (1st char must be '\''), all wrapped in single quotes. */
+    if (len < 3 || content[0] != '\'' || content[len - 1] != '\'' || (content[1] == '\\' && len != 4))
     {
-        // Assuming char literal might includes quotes, so extract the char in between
-        size_t len = epc_cpt_node_get_semantic_len(node);
-        if (len >= 3 && epc_cpt_node_get_semantic_content(node)[0] == '\'' && epc_cpt_node_get_semantic_content(node)[len - 1] == '\'')
+        epc_ast_builder_set_error(ctx, "Expected quoted char, but didn't get one (%.*s)", (int)len, content);
+        for (int i = 0; i < count; ++i)
         {
-            ast_node->data.char_literal.value = epc_cpt_node_get_semantic_content(node)[1];
+            gdl_ast_node_free(children[i], user_data);
         }
-        else if (len >= 1)
-        {
-            ast_node->data.char_literal.value = epc_cpt_node_get_semantic_content(node)[0];
-        }
+        return;
     }
-    epc_ast_push(ctx, ast_node);
+
+    gdl_ast_node_t * ast_node = gdl_ast_node_alloc(ctx, GDL_AST_NODE_TYPE_CHAR_LITERAL);
+    if (ast_node != NULL)
+    {
+        /* Exclude the quotes that wrap the (possibly escaped) char. */
+        ast_node->data.char_literal.value = strndup(content + 1, len - 2);
+        epc_ast_push(ctx, ast_node);
+    }
 }
 
 static void
@@ -628,8 +640,8 @@ handle_create_string_literal(
             }
             free(temp_str);
         }
+        epc_ast_push(ctx, ast_node);
     }
-    epc_ast_push(ctx, ast_node);
 }
 
 static void
@@ -666,8 +678,8 @@ handle_create_raw_char_literal(
     if (ast_node)
     {
         ast_node->data.raw_char_literal.value = epc_cpt_node_get_semantic_content(node)[0];
+        epc_ast_push(ctx, ast_node);
     }
-    epc_ast_push(ctx, ast_node);
 }
 
 static void
@@ -717,9 +729,9 @@ handle_create_program(
         rule_sequence_node->data.sequence.elements.head = NULL;
         rule_sequence_node->data.sequence.elements.tail = NULL;
         rule_sequence_node->data.sequence.elements.count = 0;
+        epc_ast_push(ctx, program_node); // This is the final root
     }
     gdl_ast_node_free(rule_sequence_node, user_data); // Free the wrapper node (sequence node which held the list)
-    epc_ast_push(ctx, program_node); // This is the final root
 }
 
 static void
@@ -777,9 +789,9 @@ handle_create_rule_definition(
         identifier_ref_node->data.identifier_ref.name = NULL; // Prevent double free
         rule_def_node->data.rule_def.definition = definition_node;
         rule_def_node->data.rule_def.semantic_action = semantic_action_node;
+        epc_ast_push(ctx, rule_def_node);
     }
     gdl_ast_node_free(identifier_ref_node, user_data); // Free wrapper node (IdentifierRef node)
-    epc_ast_push(ctx, rule_def_node);
 }
 
 static void
@@ -829,10 +841,10 @@ handle_create_char_range(
     {
         char_range_node->data.char_range.start_char = start_char_node->data.raw_char_literal.value;
         char_range_node->data.char_range.end_char = end_char_node->data.raw_char_literal.value;
+        epc_ast_push(ctx, char_range_node);
     }
     gdl_ast_node_free(start_char_node, user_data);
     gdl_ast_node_free(end_char_node, user_data);
-    epc_ast_push(ctx, char_range_node);
 }
 
 static void
@@ -878,9 +890,9 @@ handle_create_oneof_call(
     {
         result_node->data.none_or_one_of_call.args = args_list_node->data.string_literal.value;
         args_list_node->data.string_literal.value = NULL; // Transfer ownership
-        gdl_ast_node_free(args_list_node, user_data); // Free the wrapper node
+        epc_ast_push(ctx, result_node);
     }
-    epc_ast_push(ctx, result_node);
+    gdl_ast_node_free(args_list_node, user_data); // Free the wrapper node
 }
 
 static void
@@ -926,9 +938,9 @@ handle_create_noneof_call(
     {
         result_node->data.none_or_one_of_call.args = args_list_node->data.string_literal.value;
         args_list_node->data.string_literal.value = NULL; // Transfer ownership
-        gdl_ast_node_free(args_list_node, user_data); // Free the wrapper node
+        epc_ast_push(ctx, result_node);
     }
-    epc_ast_push(ctx, result_node);
+    gdl_ast_node_free(args_list_node, user_data); // Free the wrapper node
 }
 
 static void
@@ -977,8 +989,8 @@ handle_create_count_call(
     {
         result_node->data.count_call.count_node = count_val_node;
         result_node->data.count_call.expression = expr_node;
+        epc_ast_push(ctx, result_node);
     }
-    epc_ast_push(ctx, result_node);
 }
 
 static void
@@ -1019,8 +1031,8 @@ handle_create_delimited_call(
     {
         result_node->data.delimited_call.item_expr = item_expr_node;
         result_node->data.delimited_call.delimiter_expr = delimiter_expr_node;
+        epc_ast_push(ctx, result_node);
     }
-    epc_ast_push(ctx, result_node);
 }
 
 static void
@@ -1063,8 +1075,8 @@ handle_create_between_call(
         result_node->data.between_call.open_expr = open_expr_node;
         result_node->data.between_call.content_expr = content_expr_node;
         result_node->data.between_call.close_expr = close_expr_node;
+        epc_ast_push(ctx, result_node);
     }
-    epc_ast_push(ctx, result_node);
 }
 
 // Unary combinator helper action
@@ -1104,8 +1116,8 @@ handle_unary_combinator_call(
     if (result_node)
     {
         result_node->data.unary_combinator_call.expr = expr_node;
+        epc_ast_push(ctx, result_node);
     }
-    epc_ast_push(ctx, result_node);
 }
 
 static void handle_create_lookahead_call(epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data) {
@@ -1159,8 +1171,8 @@ handle_create_chainl1_call(
     {
         result_node->data.chain_combinator_call.item_expr = item_expr_node;
         result_node->data.chain_combinator_call.op_expr = op_expr_node;
+        epc_ast_push(ctx, result_node);
     }
-    epc_ast_push(ctx, result_node);
 }
 
 static void
@@ -1201,8 +1213,8 @@ handle_create_chainr1_call(
     {
         result_node->data.chain_combinator_call.item_expr = item_expr_node;
         result_node->data.chain_combinator_call.op_expr = op_expr_node;
+        epc_ast_push(ctx, result_node);
     }
-    epc_ast_push(ctx, result_node);
 }
 
 static void
@@ -1267,8 +1279,8 @@ handle_create_expression_factor(
         {
             result_node->data.repetition_expr.expression = primary_expression_node;
             result_node->data.repetition_expr.repetition = repetition_op;
+            epc_ast_push(ctx, result_node);
         }
-        epc_ast_push(ctx, result_node);
     }
     else
     {
@@ -1393,8 +1405,8 @@ handle_create_optional_expression(
     if (optional_expr_node)
     {
         optional_expr_node->data.optional.expr = optional_content_node;
+        epc_ast_push(ctx, optional_expr_node);
     }
-    epc_ast_push(ctx, optional_expr_node);
 }
 
 static void
@@ -1441,9 +1453,9 @@ handle_create_fail_call(
     {
         fail_call_node->data.string_literal.value = str_lit_node->data.string_literal.value;
         str_lit_node->data.string_literal.value = NULL; // Transfer ownership
-        gdl_ast_node_free(str_lit_node, user_data); // Free the wrapper node
+        epc_ast_push(ctx, fail_call_node);
     }
-    epc_ast_push(ctx, fail_call_node);
+    gdl_ast_node_free(str_lit_node, user_data); // Free the wrapper node
 }
 
 

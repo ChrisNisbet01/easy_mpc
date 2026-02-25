@@ -122,7 +122,7 @@ typedef struct
 
 typedef struct
 {
-    char value;
+    char * value;
 } gdl_ast_char_literal_t;
 
 typedef struct
