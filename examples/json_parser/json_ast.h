@@ -16,15 +16,10 @@ typedef enum {
 
 typedef struct json_node_t json_node_t;
 
-typedef struct json_list_node_t {
-    json_node_t * item;
-    struct json_list_node_t * next;
-} json_list_node_t;
-
 typedef struct {
-    json_list_node_t * head;
-    json_list_node_t * tail;
-    int count;
+    json_node_t **items; // Pointer to array of json_node_t pointers
+    size_t count;        // Number of items currently in the list
+    size_t capacity;     // Total allocated capacity of the items array
 } json_list_t;
 
 typedef struct {

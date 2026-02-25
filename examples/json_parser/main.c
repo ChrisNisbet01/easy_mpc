@@ -97,10 +97,10 @@ print_json_ast(json_node_t * node, int indent, bool newline_and_indent, bool end
             break;
         case JSON_NODE_ARRAY:
             printf("[\n");
-            for (json_list_node_t * curr = node->data.list.head; curr; curr = curr->next)
+            for (size_t i = 0; i < node->data.list.count; i++)
             {
-                bool is_last_item = curr->next == NULL;
-                print_json_ast(curr->item, indent + 1, true, is_last_item);
+                bool is_last_item = (i == node->data.list.count - 1);
+                print_json_ast(node->data.list.items[i], indent + 1, true, is_last_item);
                 if (!is_last_item)
                 {
                     printf(",");
@@ -112,10 +112,10 @@ print_json_ast(json_node_t * node, int indent, bool newline_and_indent, bool end
             break;
         case JSON_NODE_OBJECT:
             printf("{\n");
-            for (json_list_node_t * curr = node->data.list.head; curr; curr = curr->next)
+            for (size_t i = 0; i < node->data.list.count; i++)
             {
-                bool is_last_item = curr->next == NULL;
-                print_json_ast(curr->item, indent + 1, true, is_last_item);
+                bool is_last_item = (i == node->data.list.count - 1);
+                print_json_ast(node->data.list.items[i], indent + 1, true, is_last_item);
                 if (!is_last_item)
                 {
                     printf(",");

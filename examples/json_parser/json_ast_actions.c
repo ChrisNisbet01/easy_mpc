@@ -5,6 +5,36 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define JSON_LIST_INITIAL_CAPACITY 4
+
+static bool
+json_list_ensure_capacity(json_list_t * list)
+{
+    if (list->count < list->capacity)
+    {
+        return true; // Enough capacity
+    }
+
+    size_t new_capacity = list->capacity * 2;
+
+    if (new_capacity == 0) // Handle initial zero capacity
+    {
+        new_capacity = JSON_LIST_INITIAL_CAPACITY;
+    }
+
+    json_node_t ** new_items = realloc(list->items, new_capacity * sizeof(json_node_t *));
+
+    if (new_items == NULL)
+    {
+        return false; // Reallocation failed
+    }
+
+    list->items = new_items;
+    list->capacity = new_capacity;
+
+    return true;
+}
+
 static json_node_t *
 json_node_alloc(json_node_type_t type)
 {
@@ -34,14 +64,13 @@ json_node_free(void * node_ptr, void * user_data)
         case JSON_NODE_ARRAY:
         case JSON_NODE_LIST:
         {
-            json_list_node_t * curr = node->data.list.head;
-            while (curr)
+            // Free individual items in the dynamic array
+            for (size_t i = 0; i < node->data.list.count; i++)
             {
-                json_list_node_t * next = curr->next;
-                json_node_free(curr->item, user_data);
-                free(curr);
-                curr = next;
+                json_node_free(node->data.list.items[i], user_data);
             }
+            // Free the array itself
+            free(node->data.list.items);
             break;
         }
         case JSON_NODE_MEMBER:
@@ -59,23 +88,14 @@ json_node_free(void * node_ptr, void * user_data)
 static void
 ast_list_append(json_list_t * list, json_node_t * item)
 {
-    json_list_node_t * new_node = calloc(1, sizeof(*new_node));
-    if (new_node == NULL)
+    if (!json_list_ensure_capacity(list))
     {
+        // Handle error: memory reallocation failed
+        // For now, just return, will likely lead to further errors
         return;
     }
-    new_node->item = item;
-    new_node->next = NULL;
 
-    if (list->tail)
-    {
-        list->tail->next = new_node;
-    }
-    else
-    {
-        list->head = new_node;
-    }
-    list->tail = new_node;
+    list->items[list->count] = item;
     list->count++;
 }
 
@@ -160,6 +180,13 @@ create_number_action(
     size_t len = epc_cpt_node_get_semantic_len(node);
     char * endptr;
     char * buf = strndup(content, len);
+    if (buf == NULL)
+    {
+        free_children(children, count, user_data);
+        epc_ast_builder_set_error(ctx, "Failed to duplicate number string");
+        free(jnode);
+        return;
+    }
     jnode->data.number = strtod(buf, &endptr);
     free(buf);
 
@@ -241,6 +268,7 @@ create_list_action(
         epc_ast_builder_set_error(ctx, "Failed to allocate JSON list node");
         return;
     }
+
     // Children are passed in the order they appear in the grammar
     for (int i = 0; i < count; i++)
     {
@@ -268,6 +296,11 @@ create_optional_list_action(
     {
         // Empty list
         json_node_t * list_node = json_node_alloc(JSON_NODE_LIST);
+        if (list_node == NULL)
+        {
+            epc_ast_builder_set_error(ctx, "Failed to allocate JSON list node for empty optional list");
+            return;
+        }
         epc_ast_push(ctx, list_node);
     }
     else
