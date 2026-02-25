@@ -1,0 +1,43 @@
+// Rule to match any character except a star '*'
+NotStar = noneof("*");
+// Rule to match a star '*' ONLY IF it is NOT followed by a slash '/'
+// This prevents "*/" from being prematurely consumed as part of the comment's content.
+
+StarNotSlash = '*' not(lookahead('/'));
+
+// Rule to match the content inside a C comment (anything between "/*" and "*/")
+// It matches any character that is not '*' OR a '*' that is not followed by '/'
+CCommentContent = (NotStar | StarNotSlash)*;
+
+// Rule for a C-style block comment: "/*" followed by content, followed by "*/"
+CComment = "/*" CCommentContent "*/";
+
+// Rule to match any character that is not a forward slash '/' or a newline.
+// This is part of the "text" before the comment, ensuring we don't accidentally
+// consume the start of a C comment ("/*").
+RegularTextChar = noneof("/\n");
+
+// Rule to match a forward slash '/' ONLY IF it is NOT followed by a star '*'.
+// This allows single slashes in the text part without starting a C comment.
+NonCommentStartSlash = '/' not(lookahead('*'));
+
+// Rule for the "some text" part on the line before the C comment starts.
+// It can contain any RegularTextChar or a NonCommentStartSlash.
+// The `*` makes it match zero or more times.
+TextBeforeCComment = (RegularTextChar | NonCommentStartSlash)*;
+
+// Rule for the optional content that might appear after the C comment on the same line.
+// This matches any character that is not a newline.
+RemainingLineContent = noneof("\n")*;
+
+// The main rule to match a line that has some text followed by a C comment.
+// It consists of:
+// 1. Optional `TextBeforeCComment`
+// 2. The `CComment` itself
+// 3. Optional `RemainingLineContent` (text after the comment on the same line)
+// 4. A `'\n'` for the newline at the end of the line, or `eoi` (end of input) if it's the last line
+LineWithCComment = TextBeforeCComment CComment RemainingLineContent ('\n' | eoi);
+
+// If this were the top-level rule for a GDL file, it might be:
+// Program = LineWithCComment eoi;
+

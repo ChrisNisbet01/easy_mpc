@@ -411,7 +411,7 @@ TEST(TerminalParsersNew, CppComment_FailsOnNoDoubleSlash)
     epc_parser_list * list = epc_parser_list_create();
     epc_parser_t* p = epc_cpp_comment_l(list, NULL);
     epc_parse_session_t session = epc_parse_input(p, "A regular line\n");
-    check_failure(session, "Unexpected string");
+    check_failure(session, "Expected '//'");
     epc_parser_list_free(list);
 }
 
@@ -420,7 +420,7 @@ TEST(TerminalParsersNew, CppComment_FailsOnSingleSlash)
     epc_parser_list * list = epc_parser_list_create();
     epc_parser_t* p = epc_cpp_comment_l(list, NULL);
     epc_parse_session_t session = epc_parse_input(p, "/ A single slash comment\n");
-    check_failure(session, "Unexpected string");
+    check_failure(session, "Expected '//'");
     epc_parser_list_free(list);
 }
 
@@ -437,6 +437,88 @@ TEST(TerminalParsersNew, CppComment_FailsOnNullInput)
 {
     epc_parser_list * list = epc_parser_list_create();
     epc_parser_t* p = epc_cpp_comment_l(list, NULL);
+    epc_parse_session_t session = epc_parse_input(p, NULL);
+    check_failure(session, "Input string is NULL");
+    epc_parser_list_free(list);
+}
+
+// --- epc_c_comment tests ---
+TEST(TerminalParsersNew, CComment_MatchesSimpleComment)
+{
+    epc_parser_list * list = epc_parser_list_create();
+    epc_parser_t* p = epc_c_comment_l(list, NULL);
+    epc_parse_session_t session = epc_parse_input(p, "/* This is a C comment */ Next code");
+    check_success(session, "c_comment", "/* This is a C comment */", 25);
+    epc_parser_list_free(list);
+}
+
+TEST(TerminalParsersNew, CComment_MatchesMultiLineComment)
+{
+    epc_parser_list * list = epc_parser_list_create();
+    epc_parser_t* p = epc_c_comment_l(list, NULL);
+    epc_parse_session_t session = epc_parse_input(p, "/* Multi\nline\ncomment */ After");
+    check_success(session, "c_comment", "/* Multi\nline\ncomment */", 24);
+    epc_parser_list_free(list);
+}
+
+TEST(TerminalParsersNew, CComment_MatchesCommentWithStarsInside)
+{
+    epc_parser_list * list = epc_parser_list_create();
+    epc_parser_t* p = epc_c_comment_l(list, NULL);
+    epc_parse_session_t session = epc_parse_input(p, "/* Comment * with * stars */ End");
+    check_success(session, "c_comment", "/* Comment * with * stars */", 28);
+    epc_parser_list_free(list);
+}
+
+TEST(TerminalParsersNew, CComment_MatchesCommentAtEOF)
+{
+    epc_parser_list * list = epc_parser_list_create();
+    epc_parser_t* p = epc_c_comment_l(list, NULL);
+    epc_parse_session_t session = epc_parse_input(p, "/* Comment at EOF */");
+    check_success(session, "c_comment", "/* Comment at EOF */", 20);
+    epc_parser_list_free(list);
+}
+
+TEST(TerminalParsersNew, CComment_MatchesEmptyComment)
+{
+    epc_parser_list * list = epc_parser_list_create();
+    epc_parser_t* p = epc_c_comment_l(list, NULL);
+    epc_parse_session_t session = epc_parse_input(p, "/**/Something else");
+    check_success(session, "c_comment", "/**/", 4);
+    epc_parser_list_free(list);
+}
+
+TEST(TerminalParsersNew, CComment_FailsOnUnterminatedComment)
+{
+    epc_parser_list * list = epc_parser_list_create();
+    epc_parser_t* p = epc_c_comment_l(list, NULL);
+    epc_parse_session_t session = epc_parse_input(p, "/* Unterminated comment");
+    check_failure(session, "Unterminated C-style comment");
+    epc_parser_list_free(list);
+}
+
+TEST(TerminalParsersNew, CComment_FailsOnNoStartDelimiter)
+{
+    epc_parser_list * list = epc_parser_list_create();
+    epc_parser_t* p = epc_c_comment_l(list, NULL);
+    epc_parse_session_t session = epc_parse_input(p, "Not a comment */");
+    check_failure(session, "Expected '/*'");
+    epc_parser_list_free(list);
+}
+
+TEST(TerminalParsersNew, CComment_FailsOnEmptyInput)
+{
+    epc_parser_list * list = epc_parser_list_create();
+    epc_parser_t* p = epc_c_comment_l(list, NULL);
+    epc_parse_session_t session = epc_parse_input(p, "");
+    check_failure(session, "Expected '/*'");
+    epc_parser_list_free(list);
+}
+
+TEST(TerminalParsersNew, CComment_FailsOnNullInput)
+{
+    epc_parser_list * list = epc_parser_list_create();
+    epc_parser_t* p = epc_c_comment_l(list, NULL);
     epc_parse_session_t session = epc_parse_input(p, NULL);
     check_failure(session, "Input string is NULL");
     epc_parser_list_free(list);

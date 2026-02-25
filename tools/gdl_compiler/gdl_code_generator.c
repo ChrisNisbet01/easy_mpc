@@ -699,7 +699,15 @@ generate_expression_code(
         break;
 
     case GDL_AST_NODE_TYPE_CHAR_LITERAL:
-        fprintf(source_file, "epc_char_l(list, %s%s%s, '%c')", q, expr_name, q, expression_node->data.char_literal.value);
+        /* TODO: Likely needs support for \n, \t, \r. \' as well. */
+        if (expression_node->data.char_literal.value == '\\')
+        {
+            fprintf(source_file, "epc_char_l(list, %s%s%s, '\\\\')", q, expr_name, q);
+        }
+        else
+        {
+            fprintf(source_file, "epc_char_l(list, %s%s%s, '%c')", q, expr_name, q, expression_node->data.char_literal.value);
+        }
         break;
 
     case GDL_AST_NODE_TYPE_IDENTIFIER_REF:
@@ -758,6 +766,10 @@ generate_expression_code(
         else if (strcmp(keyword_name, "cpp_comment") == 0)
         {
             fprintf(source_file, "epc_cpp_comment_l(list, \"%s\")", keyword_name);
+        }
+        else if (strcmp(keyword_name, "c_comment") == 0)
+        {
+            fprintf(source_file, "epc_c_comment_l(list, \"%s\")", keyword_name);
         }
         else if (strcmp(keyword_name, "bash_comment") == 0)
         {

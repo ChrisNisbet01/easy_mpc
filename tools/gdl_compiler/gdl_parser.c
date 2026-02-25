@@ -114,6 +114,7 @@ epc_parser_t * create_gdl_parser(epc_parser_list * l)
     epc_parser_t * p_fail_raw           = epc_string_l(l, "fail", "fail");
     epc_parser_t * p_fail               = epc_lexeme_l(l, "fail", p_fail_raw);
     epc_parser_t * p_cpp_comment_raw    = epc_string_l(l, "cpp_comment", "cpp_comment");
+    epc_parser_t * p_c_comment_raw      = epc_string_l(l, "c_comment", "c_comment");
     epc_parser_t * p_bash_comment_raw   = epc_string_l(l, "bash_comment", "bash_comment");
 
     /* Combinator. */
@@ -146,7 +147,7 @@ epc_parser_t * create_gdl_parser(epc_parser_list * l)
 
     epc_parser_t * terminal_no_arg_parser =
         epc_or_l(
-        l, "TerminalNoArgKeyword", 13,
+        l, "TerminalNoArgKeyword", 14,
         p_char_raw,
         p_digit_raw,
         p_alphanum_raw,
@@ -158,6 +159,7 @@ epc_parser_t * create_gdl_parser(epc_parser_list * l)
         p_succeed_raw,
         p_hex_digit_raw,
         p_cpp_comment_raw,
+        p_c_comment_raw,
         p_bash_comment_raw,
         p_eoi_raw
         );
