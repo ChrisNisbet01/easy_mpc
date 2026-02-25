@@ -977,6 +977,26 @@ static inline epc_parser_t * epc_bash_comment_l(epc_parser_list * list, char con
 }
 
 /**
+ * @brief Creates a parser that matches a C-style comment.
+ * @param name The name of the parser for debugging/CPT.
+ * @return A new `parser_t` instance, or NULL on error.
+ */
+EASY_PC_API epc_parser_t * epc_c_comment(char const * name);
+
+/**
+ * @brief Creates a parser that matches a C-style comment.
+ *        This is a convenience wrapper for epc_c_comment that automatically adds the created
+ *        parser to the provided `epc_parser_list`.
+ * @param list The parser list to add to.
+ * @param name The name of the parser for debugging/CPT.
+ * @return A new `parser_t` instance, or NULL on error.
+ */
+static inline epc_parser_t * epc_c_comment_l(epc_parser_list * list, char const * name)
+{
+    return epc_parser_list_add(list, epc_c_comment(name));
+}
+
+/**
  * @brief Allocates and initializes a new parser object within the grammar's memory context.
  *
  * This function is typically used to create a forward reference to a parser that is needed to
