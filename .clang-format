@@ -1,0 +1,64 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+
+# Indentation & Line Length
+IndentWidth: 4
+UseTab: Never
+ColumnLimit: 120
+
+# Braces
+AllowShortBlocksOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+
+# Const Correctness (East Const)
+# Note: Requires clang-format 14 or higher
+QualifierAlignment: Custom
+QualifierOrder: ['type', 'const', 'volatile']
+
+# Pointers
+PointerAlignment: Middle
+
+# Function Parameters and Calls
+AlignAfterOpenBracket: BlockIndent
+BinPackParameters: false
+BinPackArguments: false
+AlwaysBreakAfterReturnType: AllDefinitions
+
+# Whitespace
+SpaceAfterCStyleCast: false
+SpaceBeforeParens: ControlStatements
+SpacesInContainerLiterals: true
+
+AllowShortCaseLabelsOnASingleLine: false
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: true       # Required for Allman-style case braces
+  AfterClass: true           # Allman default
+  AfterControlStatement: Always # Allman default
+  AfterEnum: true            # Allman default
+  AfterFunction: true        # Allman default
+  AfterNamespace: true       # Allman default
+  AfterObjCDeclaration: true # Allman default
+  AfterStruct: true          # Allman default
+  AfterUnion: true           # Allman default
+  BeforeCatch: true          # Allman default
+  BeforeElse: true           # Allman default
+  
+  BreakBeforeCaseLabels: true
+
+IndentCaseLabels: false
+
+# Includes
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex:           '^"([^/]+)\.h"$'
+    Priority:        -1
+  - Regex:           '^".*"'
+    Priority:        1
+  - Regex:           '^<.*>'
+    Priority:        2
+...

@@ -1,11 +1,14 @@
-#include "json_grammar.h"
 #include "json_ast.h"
 #include "json_ast_actions.h"
+#include "json_grammar.h"
 #include "semantic_actions.h"
+
 #include "easy_pc/easy_pc_ast.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 // Function to read content from a file or stdin
 static char *
@@ -83,55 +86,55 @@ print_json_ast(json_node_t * node, int indent, bool newline_and_indent, bool end
 
     switch (node->type)
     {
-        case JSON_NODE_NULL:
-            printf("null");
-            break;
-        case JSON_NODE_BOOLEAN:
-            printf("%s", node->data.boolean ? "true" : "false");
-            break;
-        case JSON_NODE_NUMBER:
-            printf("%g", node->data.number);
-            break;
-        case JSON_NODE_STRING:
-            printf("\"%s\"", node->data.string);
-            break;
-        case JSON_NODE_ARRAY:
-            printf("[\n");
-            for (size_t i = 0; i < node->data.list.count; i++)
+    case JSON_NODE_NULL:
+        printf("null");
+        break;
+    case JSON_NODE_BOOLEAN:
+        printf("%s", node->data.boolean ? "true" : "false");
+        break;
+    case JSON_NODE_NUMBER:
+        printf("%g", node->data.number);
+        break;
+    case JSON_NODE_STRING:
+        printf("\"%s\"", node->data.string);
+        break;
+    case JSON_NODE_ARRAY:
+        printf("[\n");
+        for (size_t i = 0; i < node->data.list.count; i++)
+        {
+            bool is_last_item = (i == node->data.list.count - 1);
+            print_json_ast(node->data.list.items[i], indent + 1, true, is_last_item);
+            if (!is_last_item)
             {
-                bool is_last_item = (i == node->data.list.count - 1);
-                print_json_ast(node->data.list.items[i], indent + 1, true, is_last_item);
-                if (!is_last_item)
-                {
-                    printf(",");
-                    printf("\n");
-                }
+                printf(",");
+                printf("\n");
             }
-            print_indent(indent);
-            printf("]");
-            break;
-        case JSON_NODE_OBJECT:
-            printf("{\n");
-            for (size_t i = 0; i < node->data.list.count; i++)
+        }
+        print_indent(indent);
+        printf("]");
+        break;
+    case JSON_NODE_OBJECT:
+        printf("{\n");
+        for (size_t i = 0; i < node->data.list.count; i++)
+        {
+            bool is_last_item = (i == node->data.list.count - 1);
+            print_json_ast(node->data.list.items[i], indent + 1, true, is_last_item);
+            if (!is_last_item)
             {
-                bool is_last_item = (i == node->data.list.count - 1);
-                print_json_ast(node->data.list.items[i], indent + 1, true, is_last_item);
-                if (!is_last_item)
-                {
-                    printf(",");
-                    printf("\n");
-                }
+                printf(",");
+                printf("\n");
             }
-            print_indent(indent);
-            printf("}");
-            break;
-        case JSON_NODE_MEMBER:
-            printf("\"%s\": ", node->data.member.key);
-            print_json_ast(node->data.member.value, indent + 1, false, false);
-            break;
-        default:
-            printf("UNKNOWN NODE TYPE");
-            break;
+        }
+        print_indent(indent);
+        printf("}");
+        break;
+    case JSON_NODE_MEMBER:
+        printf("\"%s\": ", node->data.member.key);
+        print_json_ast(node->data.member.value, indent + 1, false, false);
+        break;
+    default:
+        printf("UNKNOWN NODE TYPE");
+        break;
     }
 
     if (end_with_newline)
@@ -194,9 +197,9 @@ main(int argc, char * argv[])
         return EXIT_FAILURE;
     }
 
-    epc_compile_result_t compile_result =
-        epc_parse_and_build_ast(json_root_parser, input_content,
-                                JSON_ACTION_MAX, json_ast_hook_registry_init, NULL);
+    epc_compile_result_t compile_result = epc_parse_and_build_ast(
+        json_root_parser, input_content, JSON_ACTION_MAX, json_ast_hook_registry_init, NULL
+    );
 
     if (!compile_result.success)
     {
