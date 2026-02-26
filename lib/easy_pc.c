@@ -1,9 +1,9 @@
 #include "easy_pc_private.h"
 #include "parsers.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 // --- CPT Visitor ---
 static void
@@ -43,7 +43,7 @@ epc_cpt_visit_nodes(epc_cpt_node_t * root, epc_cpt_visitor_t * visitor)
 
 // Internal parser_ctx_t creation (for parse results)
 static epc_parser_ctx_t *
-internal_create_parse_ctx(const char * input_start)
+internal_create_parse_ctx(char const * input_start)
 {
     epc_parser_ctx_t * ctx = calloc(1, sizeof(*ctx));
     if (!ctx)
@@ -71,19 +71,15 @@ internal_destroy_parse_ctx(epc_parser_ctx_t * ctx)
 }
 
 EASY_PC_API epc_parse_session_t
-epc_parse_input(epc_parser_t * top_parser, const char * input_string)
+epc_parse_input(epc_parser_t * top_parser, char const * input_string)
 {
-    epc_parse_session_t session_result = { 0 };
+    epc_parse_session_t session_result = {0};
 
     epc_parser_ctx_t * ctx = internal_create_parse_ctx(input_string);
     if (!ctx)
     {
-        session_result.result = epc_unparsed_error_result(
-            0,
-            "Failed to create internal parse context.",
-            "valid parse context",
-            "NULL"
-        );
+        session_result.result
+            = epc_unparsed_error_result(0, "Failed to create internal parse context.", "valid parse context", "NULL");
         return session_result;
     }
     session_result.internal_parse_ctx = ctx;
@@ -91,22 +87,14 @@ epc_parse_input(epc_parser_t * top_parser, const char * input_string)
     if (top_parser == NULL)
     {
         session_result.result = epc_unparsed_error_result(
-            0,
-            "Top parser not set for grammar",
-            "grammar with a top parser",
-            "NULL top_parser"
+            0, "Top parser not set for grammar", "grammar with a top parser", "NULL top_parser"
         );
         return session_result;
     }
 
     if (input_string == NULL)
     {
-        session_result.result = epc_unparsed_error_result(
-            0,
-            "Input string is NULL",
-            "non-NULL input string",
-            "NULL"
-        );
+        session_result.result = epc_unparsed_error_result(0, "Input string is NULL", "non-NULL input string", "NULL");
         return session_result;
     }
 
@@ -116,14 +104,12 @@ epc_parse_input(epc_parser_t * top_parser, const char * input_string)
     // is more informative than the one that caused the final failure.
     if (session_result.result.is_error)
     {
-        epc_parser_error_t *furthest_error = parser_furthest_error_copy(ctx);
+        epc_parser_error_t * furthest_error = parser_furthest_error_copy(ctx);
 
         // A `furthest_error` is more informative if it parsed further into the input string.
         if (furthest_error != NULL
             && (session_result.result.data.error == NULL
-                || furthest_error->input_position > session_result.result.data.error->input_position
-               )
-           )
+                || furthest_error->input_position > session_result.result.data.error->input_position))
         {
             // If it is, replace the result's error with the furthest one.
             epc_parser_result_cleanup(&session_result.result);
@@ -141,7 +127,7 @@ epc_parse_input(epc_parser_t * top_parser, const char * input_string)
 }
 
 EASY_PC_API void
-    epc_parse_session_destroy(epc_parse_session_t * session)
+epc_parse_session_destroy(epc_parse_session_t * session)
 {
     if (session == NULL)
     {
@@ -192,6 +178,22 @@ epc_node_free(epc_cpt_node_t * node)
         free(node->children);
     }
     free(node);
+}
+
+EASY_PC_HIDDEN
+char const *
+epc_node_id(epc_cpt_node_t const * node)
+{
+    if (node == NULL)
+    {
+        return "NULL";
+    }
+    if (node->name)
+    {
+        return node->name;
+    }
+
+    return node->tag;
 }
 
 EASY_PC_API epc_parser_list *
@@ -320,4 +322,3 @@ epc_cpt_node_get_len(epc_cpt_node_t * node)
 
     return node->len;
 }
-

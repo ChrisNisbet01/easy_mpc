@@ -134,6 +134,7 @@ epc_parser_allocate(char const * name)
         return NULL;
     }
     string_set(&p->name, name);
+    p->tag = ""; // Default tag is empty string, can be overridden by specific parser types
 
     return p;
 }
@@ -173,6 +174,28 @@ epc_calculate_line_and_column(char const * start, char const * current)
     res.col = current - line_start;
 
     return res;
+}
+
+EASY_PC_HIDDEN
+char const *
+epc_parser_get_name(epc_parser_t const * p)
+{
+    if (p == NULL)
+    {
+        return "NULL_PARSER";
+    }
+    else if (p->name != NULL)
+    {
+        return p->name;
+    }
+    else if (p->tag != NULL)
+    {
+        return p->tag;
+    }
+    else
+    {
+        return "Unnamed parser";
+    }
 }
 
 epc_parser_error_t *
@@ -310,15 +333,7 @@ parser_get_expected_str(epc_parser_ctx_t * ctx, epc_parser_t * p)
         return p->expected_value;
     }
 
-    if (p->name != NULL)
-    {
-        return p->name;
-    }
-    else
-    {
-        /* Shouldn't happen. */
-        return "Unnamed parser";
-    }
+    return epc_parser_get_name(p);
 }
 
 #define WITH_PARSE_DEBUG 0
@@ -330,7 +345,7 @@ parse(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset)
 #if WITH_PARSE_DEBUG
     char const * input = ctx->input_start + input_offset;
 
-    fprintf(stderr, "parsing: name: %s. input `%s`, offset: %zu\n", self->name, input, input_offset);
+    fprintf(stderr, "parsing: name: %s. input `%s`, offset: %zu\n", epc_parser_get_name(self), input, input_offset);
 #endif
 
     epc_parse_result_t result = self->parse_fn(self, ctx, input_offset);
@@ -338,11 +353,13 @@ parse(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset)
 #if WITH_PARSE_DEBUG
     if (result.is_error)
     {
-        fprintf(stderr, "\tfailed to parse: name: %s (expected: %s)\n", self->name, self->expected_value);
+        fprintf(
+            stderr, "\tfailed to parse: name: %s (expected: %s)\n", epc_parser_get_name(self), self->expected_value
+        );
     }
     else
     {
-        fprintf(stderr, "matched: %s `%.*s`\n", self->name, (int)result.data.success->len, input);
+        fprintf(stderr, "matched: %s `%.*s`\n", epc_parser_get_name(self), (int)result.data.success->len, input);
     }
 #endif
 
@@ -366,10 +383,12 @@ pchar_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_
 
     if (input[0] == expected_char)
     {
-        epc_cpt_node_t * node = epc_node_alloc(self, "char");
+        epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
         if (node == NULL)
         {
-            return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+            return epc_parser_error_result(
+                ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A"
+            );
         }
 
         node->content = input;
@@ -387,11 +406,12 @@ pchar_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_
 epc_parser_t *
 epc_char(char const * name, char c)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "char_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "char";
     p->parse_fn = pchar_parse_fn;
 
     char buf[2] = {c, '\0'};
@@ -423,10 +443,12 @@ pstring_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inpu
 
     if (strncmp(input, expected_str, expected_len) == 0)
     {
-        epc_cpt_node_t * node = epc_node_alloc(self, "string");
+        epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
         if (node == NULL)
         {
-            return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+            return epc_parser_error_result(
+                ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A"
+            );
         }
 
         node->content = input;
@@ -457,11 +479,12 @@ pstring_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inpu
 epc_parser_t *
 epc_string(char const * name, char const * s)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "string_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "string";
     p->parse_fn = pstring_parse_fn;
     char * data = strdup(s);
     if (data == NULL)
@@ -492,10 +515,10 @@ peoi_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_o
         return epc_parser_error_result(ctx, input_offset, "End of input not found", "<end of input>", buf);
     }
 
-    epc_cpt_node_t * node = epc_node_alloc(self, "eio");
+    epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
     if (node == NULL)
     {
-        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A");
     }
 
     node->content = input;
@@ -507,11 +530,12 @@ peoi_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_o
 epc_parser_t *
 epc_eoi(char const * name)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "eoi_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "eoi";
     p->parse_fn = peoi_parse_fn;
     return p;
 }
@@ -528,10 +552,12 @@ pdigit_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input
 
     if (isdigit(input[0]))
     {
-        epc_cpt_node_t * node = epc_node_alloc(self, "digit");
+        epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
         if (node == NULL)
         {
-            return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+            return epc_parser_error_result(
+                ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A"
+            );
         }
 
         node->content = input;
@@ -548,11 +574,12 @@ pdigit_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input
 epc_parser_t *
 epc_digit(char const * name)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "digit_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "digit";
     p->parse_fn = pdigit_parse_fn;
     p->expected_value = "digit";
 
@@ -575,13 +602,15 @@ pint_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_o
     size_t input_remaining = ctx->input_len - input_offset;
 
     // A valid integer must parse at least one digit
-    if (parsed_len > 0 && parsed_len <= input_remaining &&
-        (isdigit(input[0]) || (input[0] == '-' && parsed_len > 1 && isdigit(input[1]))))
+    if (parsed_len > 0 && parsed_len <= input_remaining
+        && (isdigit(input[0]) || (input[0] == '-' && parsed_len > 1 && isdigit(input[1]))))
     {
-        epc_cpt_node_t * node = epc_node_alloc(self, "integer");
+        epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
         if (node == NULL)
         {
-            return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+            return epc_parser_error_result(
+                ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A"
+            );
         }
 
         node->content = input;
@@ -608,11 +637,12 @@ pint_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_o
 epc_parser_t *
 epc_int(char const * name)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "integer");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "integer";
     p->parse_fn = pint_parse_fn;
 
     return p;
@@ -630,10 +660,12 @@ pspace_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input
 
     if (isspace(input[0]))
     {
-        epc_cpt_node_t * node = epc_node_alloc(self, "space");
+        epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
         if (node == NULL)
         {
-            return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+            return epc_parser_error_result(
+                ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A"
+            );
         }
 
         node->content = input;
@@ -651,11 +683,12 @@ pspace_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input
 epc_parser_t *
 epc_space(char const * name)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "space_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "space";
     p->parse_fn = pspace_parse_fn;
     p->expected_value = "whitespace";
 
@@ -674,10 +707,12 @@ palpha_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input
 
     if (isalpha(input[0]))
     {
-        epc_cpt_node_t * node = epc_node_alloc(self, "alpha");
+        epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
         if (node == NULL)
         {
-            return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+            return epc_parser_error_result(
+                ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A"
+            );
         }
 
         node->content = input;
@@ -695,11 +730,12 @@ palpha_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input
 epc_parser_t *
 epc_alpha(char const * name)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "alpha_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "alpha";
     p->parse_fn = palpha_parse_fn;
     p->expected_value = "alpha";
 
@@ -718,10 +754,12 @@ palphanum_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t in
 
     if (isalnum(input[0]))
     {
-        epc_cpt_node_t * node = epc_node_alloc(self, "alphanum");
+        epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
         if (node == NULL)
         {
-            return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+            return epc_parser_error_result(
+                ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A"
+            );
         }
 
         node->content = input;
@@ -739,12 +777,14 @@ palphanum_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t in
 epc_parser_t *
 epc_alphanum(char const * name)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "alphanum");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "alphanum";
     p->parse_fn = palphanum_parse_fn;
+    p->expected_value = "alphanumeric";
 
     return p;
 }
@@ -779,10 +819,10 @@ pdouble_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inpu
         return epc_parser_error_result(ctx, input_offset, "Expected a double", "double", found_str);
     }
 
-    epc_cpt_node_t * node = epc_node_alloc(self, "double");
+    epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
     if (node == NULL)
     {
-        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A");
     }
 
     node->content = input;
@@ -794,11 +834,12 @@ pdouble_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inpu
 epc_parser_t *
 epc_double(char const * name)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "double_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "double";
     p->parse_fn = pdouble_parse_fn;
     p->expected_value = "double";
 
@@ -818,7 +859,9 @@ por_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_of
 
     if (alternatives == NULL || alternatives->count == 0)
     {
-        return epc_parser_error_result(ctx, input_offset, "No alternatives provided to 'or' parser", self->name, "N/A");
+        return epc_parser_error_result(
+            ctx, input_offset, "No alternatives provided to 'or' parser", epc_parser_get_name(self), "N/A"
+        );
     }
 
     original_furthest_error = parser_furthest_error_copy(ctx);
@@ -832,13 +875,15 @@ por_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_of
             if (!child_result.is_error)
             {
                 // Return the child's success, but mark the CPT node with this 'or' parser
-                epc_cpt_node_t * or_node = epc_node_alloc(self, "or");
+                epc_cpt_node_t * or_node = epc_node_alloc(self, self->tag);
                 if (or_node == NULL)
                 {
                     epc_parser_result_cleanup(&child_result);
                     epc_parser_error_free(original_furthest_error);
 
-                    return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+                    return epc_parser_error_result(
+                        ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A"
+                    );
                 }
 
                 or_node->content = child_result.data.success->content;
@@ -849,7 +894,9 @@ por_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_of
                     epc_parser_result_cleanup(&child_result);
                     epc_parser_error_free(original_furthest_error);
 
-                    return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+                    return epc_parser_error_result(
+                        ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A"
+                    );
                 }
 
                 or_node->children[0] = child_result.data.success;
@@ -913,15 +960,15 @@ por_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_of
     }
     else
     {
-        expected_str = self->name;
+        expected_str = epc_parser_get_name(self);
     }
 
     char const * input = ctx->input_start + input_offset;
     char found_buffer[FOUND_BUFFER_SIZE];
     snprintf(found_buffer, sizeof(found_buffer), "%.*s", (int)sizeof(found_buffer) - 1, input);
 
-    epc_parse_result_t result =
-        epc_parser_error_result(ctx, input_offset, "No alternative matched", expected_str, found_buffer);
+    epc_parse_result_t result
+        = epc_parser_error_result(ctx, input_offset, "No alternative matched", expected_str, found_buffer);
     free(aggregated_expected_str);
 
     return result;
@@ -930,11 +977,12 @@ por_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_of
 static epc_parser_t *
 vepc_or(char const * name, int count, va_list args)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "or_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "or";
     p->data.parser_list = parser_list_create_v(count, args);
     p->data.data_type = PARSER_DATA_TYPE_PARSER_LIST;
 
@@ -980,14 +1028,16 @@ pand_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_o
 
     if (sequence == NULL || sequence->count == 0)
     {
-        return epc_parser_error_result(ctx, input_offset, "No parsers in 'and' sequence", self->name, "N/A");
+        return epc_parser_error_result(
+            ctx, input_offset, "No parsers in 'and' sequence", epc_parser_get_name(self), "N/A"
+        );
     }
 
     epc_cpt_node_t ** children_nodes = calloc(sequence->count, sizeof(*children_nodes));
 
     if (children_nodes == NULL)
     {
-        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A");
     }
 
     size_t current_input_offset = input_offset;
@@ -1014,7 +1064,7 @@ pand_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_o
         else
         {
             null_child_result = epc_parser_error_result(
-                ctx, current_input_offset, "NULL parser found in 'and' sequence", self->name, "NULL"
+                ctx, current_input_offset, "NULL parser found in 'and' sequence", epc_parser_get_name(self), "NULL"
             );
             break;
         }
@@ -1041,14 +1091,14 @@ pand_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_o
 
     /* No child errors, so the AND condition has succeeded. */
 
-    epc_cpt_node_t * parent_node = epc_node_alloc(self, "and");
+    epc_cpt_node_t * parent_node = epc_node_alloc(self, self->tag);
     if (parent_node == NULL)
     {
         for (int i = 0; i < sequence->count; i++)
         {
             epc_node_free(children_nodes[i]);
         }
-        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A");
     }
 
     parent_node->children = children_nodes;
@@ -1094,10 +1144,10 @@ pcpp_comment_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t
     }
 
     // Success - create a CPT node for the whole comment
-    epc_cpt_node_t * node = epc_node_alloc(self, "cpp_comment");
+    epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
     if (node == NULL)
     {
-        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A");
     }
 
     node->content = ctx->input_start + input_offset;
@@ -1109,19 +1159,78 @@ pcpp_comment_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t
 epc_parser_t *
 epc_cpp_comment(char const * name)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "cpp_comment");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "cpp_comment";
     p->parse_fn = pcpp_comment_parse_fn;
     p->expected_value = "// C++ style comment";
 
     return p;
 }
 
-// --- C++ Comment Parser Implementation ---
-// Matches "//" followed by any characters until a newline or EOF.
+// --- Bash Comment Parser Implementation ---
+// Matches "/* ... */".
+static epc_parse_result_t
+pc_comment_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset)
+{
+    char const * current_input_ptr = ctx->input_start + input_offset;
+    size_t current_offset = input_offset;
+
+    // 1. Match "/*"
+    if (current_offset + 2 > ctx->input_len || strncmp(current_input_ptr, "/*", 2) != 0)
+    {
+        return epc_parser_error_result(ctx, input_offset, "Expected '/*'", "/*", "EOF");
+    }
+    current_offset += 2;
+    current_input_ptr += 2;
+
+    // 2. Match content until "*/"
+    while (current_offset + 2 <= ctx->input_len && strncmp(current_input_ptr, "*/", 2) != 0)
+    {
+        current_offset++;
+        current_input_ptr++;
+    }
+
+    // 3. Match "*/"
+    if (current_offset + 2 > ctx->input_len || strncmp(current_input_ptr, "*/", 2) != 0)
+    {
+        return epc_parser_error_result(ctx, input_offset, "Unterminated C-style comment", "*/", "EOF");
+    }
+    current_offset += 2; // Consume "*/"
+
+    // Success - create a CPT node for the whole comment
+    epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
+    if (node == NULL)
+    {
+        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A");
+    }
+
+    node->content = ctx->input_start + input_offset;
+    node->len = current_offset - input_offset;
+
+    return epc_parser_success_result(node);
+}
+
+EASY_PC_API epc_parser_t *
+epc_c_comment(char const * name)
+{
+    epc_parser_t * p = epc_parser_allocate(name);
+    if (p == NULL)
+    {
+        return NULL;
+    }
+    p->tag = "c_comment";
+    p->parse_fn = pc_comment_parse_fn;
+    p->expected_value = "/* C-style comment */";
+
+    return p;
+}
+
+// --- Bash Comment Parser Implementation ---
+// Matches "#" followed by any characters until a newline or EOF.
 static epc_parse_result_t
 pbash_comment_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset)
 {
@@ -1155,10 +1264,10 @@ pbash_comment_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_
     }
 
     // Success - create a CPT node for the whole comment
-    epc_cpt_node_t * node = epc_node_alloc(self, "cpp_comment");
+    epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
     if (node == NULL)
     {
-        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A");
     }
 
     node->content = ctx->input_start + input_offset;
@@ -1170,11 +1279,12 @@ pbash_comment_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_
 epc_parser_t *
 epc_bash_comment(char const * name)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "bash_comment");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "bash_comment";
     p->parse_fn = pbash_comment_parse_fn;
     p->expected_value = "# Bash style comment";
 
@@ -1184,11 +1294,12 @@ epc_bash_comment(char const * name)
 static epc_parser_t *
 vepc_and(char const * name, int count, va_list args)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "and_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "and";
     p->data.parser_list = parser_list_create_v(count, args);
     p->data.data_type = PARSER_DATA_TYPE_PARSER_LIST;
 
@@ -1232,7 +1343,9 @@ pskip_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_
     epc_parser_t * parser_to_skip = (epc_parser_t *)self->data.other;
     if (parser_to_skip == NULL)
     {
-        return epc_parser_error_result(ctx, input_offset, "p_skip received NULL child parser", self->name, "NULL");
+        return epc_parser_error_result(
+            ctx, input_offset, "p_skip received NULL child parser", epc_parser_get_name(self), "NULL"
+        );
     }
 
     size_t current_input_offset = input_offset;
@@ -1257,7 +1370,9 @@ pskip_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_
              */
             epc_parser_error_free(original_furthest_error);
             epc_parser_result_cleanup(&child_result);
-            return epc_parser_error_result(ctx, input_offset, "Infinite recursion detected", self->name, "N/A");
+            return epc_parser_error_result(
+                ctx, input_offset, "Infinite recursion detected", epc_parser_get_name(self), "N/A"
+            );
         }
         total_skipped_len += child_result.data.success->len;
         current_input_offset += child_result.data.success->len;
@@ -1265,10 +1380,10 @@ pskip_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_
         epc_parser_result_cleanup(&child_result);
     }
 
-    epc_cpt_node_t * dummy_node = epc_node_alloc(self, "skip");
+    epc_cpt_node_t * dummy_node = epc_node_alloc(self, self->tag);
     if (dummy_node == NULL)
     {
-        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A");
     }
 
     char const * input = ctx->input_start + input_offset;
@@ -1282,11 +1397,12 @@ pskip_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_
 epc_parser_t *
 epc_skip(char const * name, epc_parser_t * parser_to_skip)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "skip_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "skip";
     p->parse_fn = pskip_parse_fn;
     p->data.other = parser_to_skip;
 
@@ -1304,14 +1420,16 @@ pplus_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_
 
     if (parser_to_repeat == NULL)
     {
-        return epc_parser_error_result(ctx, input_offset, "p_plus received NULL child parser", self->name, "NULL");
+        return epc_parser_error_result(
+            ctx, input_offset, "p_plus received NULL child parser", epc_parser_get_name(self), "NULL"
+        );
     }
 
     child_list_t children = {0};
     if (!child_list_init(&children, 4))
     {
         return epc_parser_error_result(
-            ctx, input_offset, "Memory allocation failure for p_plus children", self->name, "N/A"
+            ctx, input_offset, "Memory allocation failure for p_plus children", epc_parser_get_name(self), "N/A"
         );
     }
 
@@ -1330,7 +1448,7 @@ pplus_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_
     {
         child_list_release(&children);
         return epc_parser_error_result(
-            ctx, current_input_offset, "Memory allocation failure for p_plus children", self->name, "N/A"
+            ctx, current_input_offset, "Memory allocation failure for p_plus children", epc_parser_get_name(self), "N/A"
         );
     }
     current_input_offset += first_child_result.data.success->len;
@@ -1346,7 +1464,11 @@ pplus_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_
             {
                 child_list_release(&children);
                 return epc_parser_error_result(
-                    ctx, current_input_offset, "Memory allocation failure for p_plus children", self->name, "N/A"
+                    ctx,
+                    current_input_offset,
+                    "Memory allocation failure for p_plus children",
+                    epc_parser_get_name(self),
+                    "N/A"
                 );
             }
             current_input_offset += child_result.data.success->len;
@@ -1367,12 +1489,16 @@ pplus_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_
         );
     }
 
-    epc_cpt_node_t * parent_node = epc_node_alloc(self, "plus");
+    epc_cpt_node_t * parent_node = epc_node_alloc(self, self->tag);
     if (parent_node == NULL)
     {
         child_list_release(&children);
         return epc_parser_error_result(
-            ctx, plus_start_input_offset, "Memory allocation failure for p_plus parent node", self->name, "N/A"
+            ctx,
+            plus_start_input_offset,
+            "Memory allocation failure for p_plus parent node",
+            epc_parser_get_name(self),
+            "N/A"
         );
     }
 
@@ -1386,11 +1512,12 @@ pplus_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_
 epc_parser_t *
 epc_plus(char const * name, epc_parser_t * parser_to_repeat)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "plus_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "plus";
     p->parse_fn = pplus_parse_fn;
     p->data.other = parser_to_repeat;
 
@@ -1414,10 +1541,12 @@ pchar_range_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t 
 
     if (input[0] >= range->start && input[0] <= range->end)
     {
-        epc_cpt_node_t * node = epc_node_alloc(self, "char_range");
+        epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
         if (node == NULL)
         {
-            return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+            return epc_parser_error_result(
+                ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A"
+            );
         }
         node->content = input;
         node->len = 1;
@@ -1434,13 +1563,13 @@ pchar_range_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t 
 EASY_PC_API epc_parser_t *
 epc_char_range(char const * name, char char_start, char char_end)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "char_range");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "char_range";
     p->parse_fn = pchar_range_parse_fn;
-
     p->data.data_type = PARSER_DATA_TYPE_CHAR_RANGE;
     p->data.range.start = char_start;
     p->data.range.end = char_end;
@@ -1458,10 +1587,10 @@ pany_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_o
 
     char const * input = ctx->input_start + input_offset;
 
-    epc_cpt_node_t * node = epc_node_alloc(self, "any");
+    epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
     if (node == NULL)
     {
-        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A");
     }
     node->content = input;
     node->len = 1;
@@ -1472,12 +1601,14 @@ pany_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_o
 EASY_PC_API epc_parser_t *
 epc_any(char const * name)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "any");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "any";
     p->parse_fn = pany_parse_fn;
+
     return p;
 }
 
@@ -1497,10 +1628,12 @@ pnone_of_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
 
     if (strchr(chars_to_avoid, input[0]) == NULL)
     {
-        epc_cpt_node_t * node = epc_node_alloc(self, "none_of");
+        epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
         if (node == NULL)
         {
-            return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+            return epc_parser_error_result(
+                ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A"
+            );
         }
         node->content = input;
         node->len = 1;
@@ -1516,13 +1649,16 @@ pnone_of_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
 EASY_PC_API epc_parser_t *
 epc_none_of(char const * name, char const * chars_to_avoid)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "none_of");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "none_of";
     p->parse_fn = pnone_of_parse_fn;
+
     char * duplicated_chars = strdup(chars_to_avoid);
+
     if (duplicated_chars == NULL)
     {
         free(p);
@@ -1548,7 +1684,9 @@ pmany_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_
     if (parser_to_repeat == NULL)
     {
         // Should not happen if grammar is well-formed
-        return epc_parser_error_result(ctx, input_offset, "p_many received NULL child parser", self->name, "NULL");
+        return epc_parser_error_result(
+            ctx, input_offset, "p_many received NULL child parser", epc_parser_get_name(self), "NULL"
+        );
     }
 
     size_t current_input_offset = input_offset;
@@ -1558,7 +1696,7 @@ pmany_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_
     if (!child_list_init(&children, 4))
     {
         return epc_parser_error_result(
-            ctx, current_input_offset, "Memory allocation failure for p_many children", self->name, "N/A"
+            ctx, current_input_offset, "Memory allocation failure for p_many children", epc_parser_get_name(self), "N/A"
         );
     }
 
@@ -1576,7 +1714,11 @@ pmany_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_
         {
             child_list_release(&children);
             return epc_parser_error_result(
-                ctx, current_input_offset, "Memory allocation failure for p_many children", self->name, "N/A"
+                ctx,
+                current_input_offset,
+                "Memory allocation failure for p_many children",
+                epc_parser_get_name(self),
+                "N/A"
             );
         }
         current_input_offset += child_result.data.success->len;
@@ -1592,12 +1734,12 @@ pmany_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_
         );
     }
 
-    epc_cpt_node_t * parent_node = epc_node_alloc(self, "many");
+    epc_cpt_node_t * parent_node = epc_node_alloc(self, self->tag);
     if (parent_node == NULL)
     {
         child_list_release(&children);
         return epc_parser_error_result(
-            ctx, input_offset, "Memory allocation failure for p_many parent node", self->name, "N/A"
+            ctx, input_offset, "Memory allocation failure for p_many parent node", epc_parser_get_name(self), "N/A"
         );
     }
 
@@ -1613,11 +1755,12 @@ pmany_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_
 EASY_PC_API epc_parser_t *
 epc_many(char const * name, epc_parser_t * p_to_repeat)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "many_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "many";
     p->parse_fn = pmany_parse_fn;
     p->data.other = p_to_repeat;
 
@@ -1638,17 +1781,21 @@ pcount_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input
 
     if (parser_to_repeat == NULL)
     {
-        return epc_parser_error_result(ctx, input_offset, "p_count received NULL child parser", self->name, "NULL");
+        return epc_parser_error_result(
+            ctx, input_offset, "p_count received NULL child parser", epc_parser_get_name(self), "NULL"
+        );
     }
 
     char const * input = ctx->input_start + input_offset;
 
     if (num_to_match <= 0) // Matching 0 times is always a success (empty match)
     {
-        epc_cpt_node_t * node = epc_node_alloc(self, "count");
+        epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
         if (node == NULL)
         {
-            return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+            return epc_parser_error_result(
+                ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A"
+            );
         }
         node->content = input;
         node->len = 0;
@@ -1662,7 +1809,11 @@ pcount_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input
     if (!child_list_init(&children, 4))
     {
         return epc_parser_error_result(
-            ctx, current_input_offset, "Memory allocation failure for p_count children", self->name, "N/A"
+            ctx,
+            current_input_offset,
+            "Memory allocation failure for p_count children",
+            epc_parser_get_name(self),
+            "N/A"
         );
     }
 
@@ -1687,18 +1838,22 @@ pcount_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input
         {
             child_list_release(&children);
             return epc_parser_error_result(
-                ctx, current_input_offset, "Memory allocation failure for p_count children", self->name, "N/A"
+                ctx,
+                current_input_offset,
+                "Memory allocation failure for p_count children",
+                epc_parser_get_name(self),
+                "N/A"
             );
         }
         current_input_offset += child_result.data.success->len;
     }
 
-    epc_cpt_node_t * parent_node = epc_node_alloc(self, "count");
+    epc_cpt_node_t * parent_node = epc_node_alloc(self, self->tag);
     if (parent_node == NULL)
     {
         child_list_release(&children);
         return epc_parser_error_result(
-            ctx, input_offset, "Memory allocation failure for p_count parent node", self->name, "N/A"
+            ctx, input_offset, "Memory allocation failure for p_count parent node", epc_parser_get_name(self), "N/A"
         );
     }
 
@@ -1712,13 +1867,13 @@ pcount_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input
 EASY_PC_API epc_parser_t *
 epc_count(char const * name, int num, epc_parser_t * p_to_repeat)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "count_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "count";
     p->parse_fn = pcount_parse_fn;
-
     p->data.data_type = PARSER_DATA_TYPE_COUNT;
     p->data.count.count = num;
     p->data.count.parser = p_to_repeat;
@@ -1742,7 +1897,7 @@ pbetween_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
     if (p_open == NULL || p_wrapped == NULL || p_close == NULL)
     {
         return epc_parser_error_result(
-            ctx, input_offset, "p_between received NULL child parser(s)", self->name, "NULL"
+            ctx, input_offset, "p_between received NULL child parser(s)", epc_parser_get_name(self), "NULL"
         );
     }
 
@@ -1784,14 +1939,14 @@ pbetween_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
     epc_parser_result_cleanup(&close_result);
 
     // Success - create a node for 'between'
-    epc_cpt_node_t * parent_node = epc_node_alloc(self, "between");
+    epc_cpt_node_t * parent_node = epc_node_alloc(self, self->tag);
     if (parent_node == NULL)
     {
         epc_parser_result_cleanup(&wrapped_result);
         epc_parser_error_free(original_furthest_error);
 
         return epc_parser_error_result(
-            ctx, input_offset, "Memory allocation failure for p_between parent node", self->name, "N/A"
+            ctx, input_offset, "Memory allocation failure for p_between parent node", epc_parser_get_name(self), "N/A"
         );
     }
 
@@ -1802,7 +1957,11 @@ pbetween_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
         epc_parser_error_free(original_furthest_error);
 
         return epc_parser_error_result(
-            ctx, input_offset, "Memory allocation failure for p_between children array", self->name, "N/A"
+            ctx,
+            input_offset,
+            "Memory allocation failure for p_between children array",
+            epc_parser_get_name(self),
+            "N/A"
         );
     }
 
@@ -1823,13 +1982,13 @@ pbetween_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
 EASY_PC_API epc_parser_t *
 epc_between(char const * name, epc_parser_t * p_open, epc_parser_t * p_wrapped, epc_parser_t * p_close)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "between_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "between";
     p->parse_fn = pbetween_parse_fn;
-
     p->data.data_type = PARSER_DATA_TYPE_BETWEEN;
     p->data.between.open = p_open;
     p->data.between.parser = p_wrapped;
@@ -1852,7 +2011,9 @@ pdelimited_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t i
 
     if (item_parser == NULL)
     {
-        return epc_parser_error_result(ctx, input_offset, "p_delimited received NULL item parser", self->name, "NULL");
+        return epc_parser_error_result(
+            ctx, input_offset, "p_delimited received NULL item parser", epc_parser_get_name(self), "NULL"
+        );
     }
     // Delimiter can be NULL, meaning no delimiter, just sequence of items
 
@@ -1862,7 +2023,7 @@ pdelimited_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t i
     if (!child_list_init(&children, 4))
     {
         return epc_parser_error_result(
-            ctx, input_offset, "Memory allocation failure for p_delimited children", self->name, "N/A"
+            ctx, input_offset, "Memory allocation failure for p_delimited children", epc_parser_get_name(self), "N/A"
         );
     }
 
@@ -1878,7 +2039,7 @@ pdelimited_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t i
     {
         child_list_release(&children);
         return epc_parser_error_result(
-            ctx, input_offset, "Memory allocation failure for p_delimited children", self->name, "N/A"
+            ctx, input_offset, "Memory allocation failure for p_delimited children", epc_parser_get_name(self), "N/A"
         );
     }
 
@@ -1938,7 +2099,11 @@ pdelimited_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t i
         {
             child_list_release(&children);
             return epc_parser_error_result(
-                ctx, current_input_offset, "Memory allocation failure for p_delimited children", self->name, "N/A"
+                ctx,
+                current_input_offset,
+                "Memory allocation failure for p_delimited children",
+                epc_parser_get_name(self),
+                "N/A"
             );
         }
         current_input_offset += item_result.data.success->len;
@@ -1954,12 +2119,12 @@ pdelimited_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t i
         );
     }
 
-    epc_cpt_node_t * parent_node = epc_node_alloc(self, "delimited");
+    epc_cpt_node_t * parent_node = epc_node_alloc(self, self->tag);
     if (parent_node == NULL)
     {
         child_list_release(&children);
         return epc_parser_error_result(
-            ctx, input_offset, "Memory allocation failure for p_delimited parent node", self->name, "N/A"
+            ctx, input_offset, "Memory allocation failure for p_delimited parent node", epc_parser_get_name(self), "N/A"
         );
     }
 
@@ -1975,13 +2140,13 @@ pdelimited_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t i
 EASY_PC_API epc_parser_t *
 epc_delimited(char const * name, epc_parser_t * item_parser, epc_parser_t * delimiter_parser)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "delimited_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "delimited";
     p->parse_fn = pdelimited_parse_fn;
-
     p->data.data_type = PARSER_DATA_TYPE_DELIMITED;
     p->data.delimited.item = item_parser;
     p->data.delimited.delimiter = delimiter_parser;
@@ -2002,7 +2167,9 @@ poptional_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t in
 
     if (child_parser == NULL) // Should not happen if grammar is well-formed
     {
-        return epc_parser_error_result(ctx, input_offset, "p_optional received NULL child parser", self->name, "NULL");
+        return epc_parser_error_result(
+            ctx, input_offset, "p_optional received NULL child parser", epc_parser_get_name(self), "NULL"
+        );
     }
 
     original_furthest_error = parser_furthest_error_copy(ctx); // Save before child parse
@@ -2011,13 +2178,17 @@ poptional_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t in
     if (!child_result.is_error)
     {
         // Child matched, return its success result wrapped in an optional node
-        epc_cpt_node_t * parent_node = epc_node_alloc(self, "optional");
+        epc_cpt_node_t * parent_node = epc_node_alloc(self, self->tag);
         if (parent_node == NULL)
         {
             epc_parser_result_cleanup(&child_result);
             epc_parser_error_free(original_furthest_error);
             return epc_parser_error_result(
-                ctx, input_offset, "Memory allocation failure for optional parent node", self->name, "N/A"
+                ctx,
+                input_offset,
+                "Memory allocation failure for optional parent node",
+                epc_parser_get_name(self),
+                "N/A"
             );
         }
         parent_node->children = calloc(1, sizeof(*parent_node->children));
@@ -2026,7 +2197,11 @@ poptional_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t in
             epc_parser_result_cleanup(&child_result);
             epc_parser_error_free(original_furthest_error);
             return epc_parser_error_result(
-                ctx, input_offset, "Memory allocation failure for optional children array", self->name, "N/A"
+                ctx,
+                input_offset,
+                "Memory allocation failure for optional children array",
+                epc_parser_get_name(self),
+                "N/A"
             );
         }
         parent_node->children[0] = child_result.data.success;
@@ -2044,11 +2219,11 @@ poptional_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t in
     epc_parser_result_cleanup(&child_result);
     epc_parser_error_free(original_furthest_error);
 
-    epc_cpt_node_t * node = epc_node_alloc(self, "optional");
+    epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
     if (node == NULL)
     {
         return epc_parser_error_result(
-            ctx, input_offset, "Memory allocation failure for optional node", self->name, "N/A"
+            ctx, input_offset, "Memory allocation failure for optional node", epc_parser_get_name(self), "N/A"
         );
     }
 
@@ -2063,11 +2238,12 @@ poptional_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t in
 EASY_PC_API epc_parser_t *
 epc_optional(char const * name, epc_parser_t * p_to_make_optional)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "optional_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "optional";
     p->parse_fn = poptional_parse_fn;
     p->data.other = p_to_make_optional;
     return p;
@@ -2085,7 +2261,9 @@ plookahead_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t i
 
     if (child_parser == NULL) // Should not happen if grammar is well-formed
     {
-        return epc_parser_error_result(ctx, input_offset, "p_lookahead received NULL child parser", self->name, "NULL");
+        return epc_parser_error_result(
+            ctx, input_offset, "p_lookahead received NULL child parser", epc_parser_get_name(self), "NULL"
+        );
     }
 
     epc_parser_error_t * original_furthest_error = parser_furthest_error_copy(ctx);
@@ -2103,11 +2281,11 @@ plookahead_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t i
 
     // Child matched, but p_lookahead consumes no input.
     // Return a dummy success node of length 0.
-    epc_cpt_node_t * node = epc_node_alloc(self, "lookahead");
+    epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
     if (node == NULL)
     {
         return epc_parser_error_result(
-            ctx, input_offset, "Memory allocation failure for lookahead node", self->name, "N/A"
+            ctx, input_offset, "Memory allocation failure for lookahead node", epc_parser_get_name(self), "N/A"
         );
     }
 
@@ -2122,11 +2300,12 @@ plookahead_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t i
 EASY_PC_API epc_parser_t *
 epc_lookahead(char const * name, epc_parser_t * p_to_lookahead)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "lookahead_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "lookahead";
     p->parse_fn = plookahead_parse_fn;
     p->data.other = p_to_lookahead;
     return p;
@@ -2144,7 +2323,9 @@ pnot_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_o
 
     if (child_parser == NULL) // Should not happen if grammar is well-formed
     {
-        return epc_parser_error_result(ctx, input_offset, "p_not received NULL child parser", self->name, "NULL");
+        return epc_parser_error_result(
+            ctx, input_offset, "p_not received NULL child parser", epc_parser_get_name(self), "NULL"
+        );
     }
 
     epc_parser_error_t * original_furthest_error = parser_furthest_error_copy(ctx); // Save before child parse
@@ -2157,11 +2338,11 @@ pnot_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_o
         // Child failed, p_not succeeds.
         epc_parser_result_cleanup(&child_result);
         // Return a dummy success node of length 0.
-        epc_cpt_node_t * node = epc_node_alloc(self, "not");
+        epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
         if (node == NULL)
         {
             return epc_parser_error_result(
-                ctx, input_offset, "Memory allocation failure for not node", self->name, "N/A"
+                ctx, input_offset, "Memory allocation failure for not node", epc_parser_get_name(self), "N/A"
             );
         }
 
@@ -2190,11 +2371,12 @@ pnot_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_o
 EASY_PC_API epc_parser_t *
 epc_not(char const * name, epc_parser_t * p_to_not_match)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "not_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "not";
     p->parse_fn = pnot_parse_fn;
     p->data.other = p_to_not_match;
     return p;
@@ -2211,11 +2393,12 @@ pfail_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_
 EASY_PC_API epc_parser_t *
 epc_fail(char const * name, char const * message)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "fail_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "fail";
     p->parse_fn = pfail_parse_fn;
     char * duplicated_message = strdup(message);
     if (duplicated_message == NULL)
@@ -2237,11 +2420,11 @@ psucceed_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
         return epc_parser_error_result(ctx, input_offset, "Unexpected end of input", "succeed", "EOF");
     }
 
-    epc_cpt_node_t * node = epc_node_alloc(self, "succeed");
+    epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
     if (node == NULL)
     {
         return epc_parser_error_result(
-            ctx, input_offset, "Memory allocation failure for succeed node", self->name, "N/A"
+            ctx, input_offset, "Memory allocation failure for succeed node", epc_parser_get_name(self), "N/A"
         );
     }
 
@@ -2256,11 +2439,12 @@ psucceed_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
 EASY_PC_API epc_parser_t *
 epc_succeed(char const * name)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "succeed_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "succeed";
     p->parse_fn = psucceed_parse_fn;
 
     return p;
@@ -2278,10 +2462,12 @@ phex_digit_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t i
 
     if (isxdigit(input[0]))
     {
-        epc_cpt_node_t * node = epc_node_alloc(self, "hex_digit");
+        epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
         if (node == NULL)
         {
-            return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+            return epc_parser_error_result(
+                ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A"
+            );
         }
 
         node->content = input;
@@ -2299,11 +2485,12 @@ phex_digit_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t i
 EASY_PC_API epc_parser_t *
 epc_hex_digit(char const * name)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "hex_digit_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "hex_digit";
     p->parse_fn = phex_digit_parse_fn;
     p->expected_value = "hex_digit";
 
@@ -2332,10 +2519,12 @@ pone_of_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inpu
 
     if (strchr(chars_to_match, input[0]) != NULL) // If char is found in the set
     {
-        epc_cpt_node_t * node = epc_node_alloc(self, "one_of");
+        epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
         if (node == NULL)
         {
-            return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
+            return epc_parser_error_result(
+                ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A"
+            );
         }
         node->content = input;
         node->len = 1;
@@ -2351,11 +2540,12 @@ pone_of_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inpu
 EASY_PC_API epc_parser_t *
 epc_one_of(char const * name, char const * chars_to_match)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "one_of_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "one_of";
     p->parse_fn = pone_of_parse_fn;
     char * duplicated_chars = strdup(chars_to_match);
     if (duplicated_chars == NULL)
@@ -2423,7 +2613,9 @@ plexeme_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inpu
 
     if (child_parser == NULL)
     {
-        return epc_parser_error_result(ctx, input_offset, "epc_lexeme received NULL child parser", self->name, "NULL");
+        return epc_parser_error_result(
+            ctx, input_offset, "epc_lexeme received NULL child parser", epc_parser_get_name(self), "NULL"
+        );
     }
 
     epc_parser_error_t * original_furthest_error = parser_furthest_error_copy(ctx);
@@ -2450,13 +2642,13 @@ plexeme_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inpu
     current_input_offset += trailing_ws_len;
 
     // Success - create a node for 'lexeme'
-    epc_cpt_node_t * parent_node = epc_node_alloc(self, "lexeme");
+    epc_cpt_node_t * parent_node = epc_node_alloc(self, self->tag);
     if (parent_node == NULL)
     {
         epc_parser_result_cleanup(&item_result);
         epc_parser_error_free(original_furthest_error);
         return epc_parser_error_result(
-            ctx, input_offset, "Memory allocation failure for lexeme parent node", self->name, "N/A"
+            ctx, input_offset, "Memory allocation failure for lexeme parent node", epc_parser_get_name(self), "N/A"
         );
     }
 
@@ -2467,7 +2659,7 @@ plexeme_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inpu
         epc_parser_error_free(original_furthest_error);
         epc_node_free(parent_node);
         return epc_parser_error_result(
-            ctx, input_offset, "Memory allocation failure for lexeme children array", self->name, "N/A"
+            ctx, input_offset, "Memory allocation failure for lexeme children array", epc_parser_get_name(self), "N/A"
         );
     }
 
@@ -2489,11 +2681,12 @@ plexeme_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inpu
 EASY_PC_API epc_parser_t *
 epc_lexeme(char const * name, epc_parser_t * p)
 {
-    epc_parser_t * lex = epc_parser_allocate(name != NULL ? name : "lexeme_parser");
+    epc_parser_t * lex = epc_parser_allocate(name);
     if (lex == NULL)
     {
         return NULL;
     }
+    lex->tag = "lexeme";
     lex->parse_fn = plexeme_parse_fn;
     lex->data.data_type = PARSER_DATA_TYPE_LEXEME;
     lex->data.lexeme.parser = p;
@@ -2517,7 +2710,7 @@ pchainl1_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
     if (item_parser == NULL || op_parser == NULL)
     {
         return epc_parser_error_result(
-            ctx, input_offset, "epc_chainl1 received NULL child parser(s)", self->name, "NULL"
+            ctx, input_offset, "epc_chainl1 received NULL child parser(s)", epc_parser_get_name(self), "NULL"
         );
     }
 
@@ -2561,7 +2754,7 @@ pchainl1_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
         current_input_offset += right_result.data.success->len;
 
         // Combine left_result, op_result, and right_result into a new left_result
-        epc_cpt_node_t * new_parent_node = epc_node_alloc(self, "chainl1_combined");
+        epc_cpt_node_t * new_parent_node = epc_node_alloc(self, self->tag);
         if (new_parent_node == NULL)
         {
             epc_parser_result_cleanup(&op_result);
@@ -2569,7 +2762,7 @@ pchainl1_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
             epc_parser_result_cleanup(&left_result);
             epc_parser_error_free(original_furthest_error); // Cleanup in error path
             return epc_parser_error_result(
-                ctx, input_offset, "Memory allocation failure for chainl1 node", self->name, "N/A"
+                ctx, input_offset, "Memory allocation failure for chainl1 node", epc_parser_get_name(self), "N/A"
             );
         }
 
@@ -2582,7 +2775,7 @@ pchainl1_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
             epc_node_free(new_parent_node);
             epc_parser_error_free(original_furthest_error); // Cleanup in error path
             return epc_parser_error_result(
-                ctx, input_offset, "Memory allocation failure for chainl1 children", self->name, "N/A"
+                ctx, input_offset, "Memory allocation failure for chainl1 children", epc_parser_get_name(self), "N/A"
             );
         }
 
@@ -2608,11 +2801,12 @@ pchainl1_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
 EASY_PC_API epc_parser_t *
 epc_chainl1(char const * name, epc_parser_t * item_parser, epc_parser_t * op_parser)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "chainl1_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "chainl1";
     p->parse_fn = pchainl1_parse_fn;
     p->data.data_type = PARSER_DATA_TYPE_DELIMITED; // Reusing this for item/op
     p->data.delimited.item = item_parser;
@@ -2642,7 +2836,7 @@ pchainr1_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
     if (item_parser == NULL || op_parser == NULL)
     {
         return epc_parser_error_result(
-            ctx, input_offset, "epc_chainr1 received NULL child parser(s)", self->name, "NULL"
+            ctx, input_offset, "epc_chainr1 received NULL child parser(s)", epc_parser_get_name(self), "NULL"
         );
     }
 
@@ -2669,7 +2863,7 @@ pchainr1_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
         epc_parser_result_cleanup(&first_item_result);  // Cleanup the first item's result
         epc_parser_error_free(original_furthest_error); // Cleanup in error path
         return epc_parser_error_result(
-            ctx, input_offset, "Memory allocation failure for chainr1 pairs", self->name, "N/A"
+            ctx, input_offset, "Memory allocation failure for chainr1 pairs", epc_parser_get_name(self), "N/A"
         );
     }
 
@@ -2720,7 +2914,11 @@ pchainr1_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
                 free(pairs);
                 epc_parser_error_free(original_furthest_error); // Cleanup in error path
                 return epc_parser_error_result(
-                    ctx, input_offset, "Memory allocation failure during realloc for chainr1", self->name, "N/A"
+                    ctx,
+                    input_offset,
+                    "Memory allocation failure during realloc for chainr1",
+                    epc_parser_get_name(self),
+                    "N/A"
                 );
             }
             pairs = new_pairs;
@@ -2745,7 +2943,7 @@ pchainr1_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
         // to form the structure: Left_Operand op Right_Subtree
         for (int i = pair_count - 1; i >= 0; --i)
         {
-            epc_cpt_node_t * new_parent_node = epc_node_alloc(self, "chainr1_combined");
+            epc_cpt_node_t * new_parent_node = epc_node_alloc(self, self->tag);
             if (new_parent_node == NULL)
             {
                 epc_node_free(current_right_operand);
@@ -2759,7 +2957,7 @@ pchainr1_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
                 free(pairs);
                 epc_parser_error_free(original_furthest_error);
                 return epc_parser_error_result(
-                    ctx, input_offset, "Memory allocation failure for chainr1 node", self->name, "N/A"
+                    ctx, input_offset, "Memory allocation failure for chainr1 node", epc_parser_get_name(self), "N/A"
                 );
             }
 
@@ -2793,7 +2991,11 @@ pchainr1_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
                 free(pairs);
                 epc_parser_error_free(original_furthest_error);
                 return epc_parser_error_result(
-                    ctx, input_offset, "Memory allocation failure for chainr1 children", self->name, "N/A"
+                    ctx,
+                    input_offset,
+                    "Memory allocation failure for chainr1 children",
+                    epc_parser_get_name(self),
+                    "N/A"
                 );
             }
 
@@ -2803,11 +3005,11 @@ pchainr1_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
             new_parent_node->children_count = 3;
 
             new_parent_node->content = left_operand_node->content;
-            new_parent_node->len =
-                current_right_operand->content + current_right_operand->len - left_operand_node->content;
+            new_parent_node->len
+                = current_right_operand->content + current_right_operand->len - left_operand_node->content;
 
-            current_right_operand =
-                new_parent_node; // This newly formed node becomes the right operand for the next outer iteration
+            current_right_operand
+                = new_parent_node; // This newly formed node becomes the right operand for the next outer iteration
         }
         final_cpt_node = current_right_operand; // The fully built right-associative tree
     }
@@ -2823,11 +3025,12 @@ pchainr1_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inp
 EASY_PC_API epc_parser_t *
 epc_chainr1(char const * name, epc_parser_t * item_parser, epc_parser_t * op_parser)
 {
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "chainr1_parser");
+    epc_parser_t * p = epc_parser_allocate(name);
     if (p == NULL)
     {
         return NULL;
     }
+    p->tag = "chainr1";
     p->parse_fn = pchainr1_parse_fn;
     p->data.data_type = PARSER_DATA_TYPE_DELIMITED; // Reusing for item/op
     p->data.delimited.item = item_parser;
@@ -2869,6 +3072,7 @@ epc_parser_duplicate(epc_parser_t * const dst, epc_parser_t const * const src)
     dst->parse_fn = src->parse_fn;
     dst->ast_config = src->ast_config;
     string_set(&dst->name, src->name);
+    dst->tag = src->tag;
 
     parser_data_free(&dst->data);
     dst->data.data_type = src->data.data_type;
@@ -2911,59 +3115,4 @@ epc_parser_set_ast_action(epc_parser_t * p, int action_type)
     }
     p->ast_config.action = action_type;
     p->ast_config.assigned = true;
-}
-
-static epc_parse_result_t
-pc_comment_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset)
-{
-    char const * current_input_ptr = ctx->input_start + input_offset;
-    size_t current_offset = input_offset;
-
-    // 1. Match "/*"
-    if (current_offset + 2 > ctx->input_len || strncmp(current_input_ptr, "/*", 2) != 0)
-    {
-        return epc_parser_error_result(ctx, input_offset, "Expected '/*'", "/*", "EOF");
-    }
-    current_offset += 2;
-    current_input_ptr += 2;
-
-    // 2. Match content until "*/"
-    while (current_offset + 2 <= ctx->input_len && strncmp(current_input_ptr, "*/", 2) != 0)
-    {
-        current_offset++;
-        current_input_ptr++;
-    }
-
-    // 3. Match "*/"
-    if (current_offset + 2 > ctx->input_len || strncmp(current_input_ptr, "*/", 2) != 0)
-    {
-        return epc_parser_error_result(ctx, input_offset, "Unterminated C-style comment", "*/", "EOF");
-    }
-    current_offset += 2; // Consume "*/"
-
-    // Success - create a CPT node for the whole comment
-    epc_cpt_node_t * node = epc_node_alloc(self, "c_comment");
-    if (node == NULL)
-    {
-        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", self->name, "N/A");
-    }
-
-    node->content = ctx->input_start + input_offset;
-    node->len = current_offset - input_offset;
-
-    return epc_parser_success_result(node);
-}
-
-EASY_PC_API epc_parser_t *
-epc_c_comment(char const * name)
-{
-    epc_parser_t * p = epc_parser_allocate(name != NULL ? name : "c_comment");
-    if (p == NULL)
-    {
-        return NULL;
-    }
-    p->parse_fn = pc_comment_parse_fn;
-    p->expected_value = "/* C-style comment */";
-
-    return p;
 }

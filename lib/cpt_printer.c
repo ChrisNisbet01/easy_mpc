@@ -1,9 +1,9 @@
 #include "easy_pc_private.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 // Internal struct for the visitor's user_data
 typedef struct
@@ -16,7 +16,8 @@ typedef struct
     int indent_level;
 } cpt_printer_data_t;
 
-static size_t num_to_str_len(size_t num)
+static size_t
+num_to_str_len(size_t num)
 {
     if (num == 0)
     {
@@ -32,7 +33,8 @@ static size_t num_to_str_len(size_t num)
     return len;
 }
 
-static void ensure_buffer_capacity(cpt_printer_data_t * data, size_t needed_space)
+static void
+ensure_buffer_capacity(cpt_printer_data_t * data, size_t needed_space)
 {
     if (data->current_offset + needed_space > data->buffer_capacity)
     {
@@ -59,8 +61,8 @@ static void ensure_buffer_capacity(cpt_printer_data_t * data, size_t needed_spac
     }
 }
 
-
-static void cpt_printer_enter_node(epc_cpt_node_t * node, void * user_data)
+static void
+cpt_printer_enter_node(epc_cpt_node_t * node, void * user_data)
 {
     cpt_printer_data_t * data = (cpt_printer_data_t *)user_data;
     // include content and length
@@ -69,14 +71,11 @@ static void cpt_printer_enter_node(epc_cpt_node_t * node, void * user_data)
     size_t scontent_len = epc_cpt_node_get_semantic_len(node);
     epc_line_col_t sposition = epc_calculate_line_and_column(data->input_start, scontent);
     int required_len;
-    size_t estimated_line_len = data->indent_level * 4 +
-                                strlen(node->tag) + strlen(node->name) +
-        5  + // <tag> + (<name>) ()
-                                (node->content && node->len > 0 ? node->len + 3 : 0)
-                                + num_to_str_len(node->len) // 'content'
-                                + num_to_str_len(position.line)
-                                + num_to_str_len(position.col)
-                                + 20 + 1; // (line=X, col=X, len=X)\n
+    char const * node_id = epc_node_id(node);
+    size_t estimated_line_len
+        = data->indent_level * 4 + strlen(node->tag) + strlen(node_id) + 5 +               // <tag> + (<name>) ()
+          (node->content && node->len > 0 ? node->len + 3 : 0) + num_to_str_len(node->len) // 'content'
+          + num_to_str_len(position.line) + num_to_str_len(position.col) + 20 + 1;         // (line=X, col=X, len=X)\n
 
     if (scontent == node->content && scontent_len == node->len)
     {
@@ -85,13 +84,10 @@ static void cpt_printer_enter_node(epc_cpt_node_t * node, void * user_data)
     }
     if (scontent != NULL && scontent_len > 0)
     {
-        estimated_line_len += scontent_len + 3
-        + num_to_str_len(scontent_len) // 'content'
-        + num_to_str_len(sposition.line)
-        + num_to_str_len(sposition.col)
-        + 20 + 1; // (line=X, col=X, len=X)\n
+        estimated_line_len += scontent_len + 3 + num_to_str_len(scontent_len) // 'content'
+                              + num_to_str_len(sposition.line) + num_to_str_len(sposition.col) + 20
+                              + 1; // (line=X, col=X, len=X)\n
     }
-
 
     ensure_buffer_capacity(data, estimated_line_len);
     if (!data->buffer)
@@ -115,8 +111,8 @@ static void cpt_printer_enter_node(epc_cpt_node_t * node, void * user_data)
     // Name: (name)
     data->buffer[data->current_offset++] = ' ';
     data->buffer[data->current_offset++] = '(';
-    required_len = strlen(node->name);
-    memcpy(data->buffer + data->current_offset, node->name, required_len);
+    required_len = strlen(node_id);
+    memcpy(data->buffer + data->current_offset, node_id, required_len);
     data->current_offset += required_len;
     data->buffer[data->current_offset++] = ')';
 
@@ -131,13 +127,18 @@ static void cpt_printer_enter_node(epc_cpt_node_t * node, void * user_data)
     }
 
     // Line/Col/Length: (line=X, col=X, len=X)
-    required_len = snprintf(data->buffer + data->current_offset,
-                            data->buffer_capacity - data->current_offset,
-                            " (line=%zu, col=%zu, len=%zu)", position.line, position.col, node->len);
+    required_len = snprintf(
+        data->buffer + data->current_offset,
+        data->buffer_capacity - data->current_offset,
+        " (line=%zu, col=%zu, len=%zu)",
+        position.line,
+        position.col,
+        node->len
+    );
     if (required_len < 0 || (size_t)required_len >= (data->buffer_capacity - data->current_offset))
     {
         data->current_offset = data->buffer_capacity - 1; // Mark as full to prevent further writes
-        data->buffer[data->current_offset] = '\0'; // Null-terminate
+        data->buffer[data->current_offset] = '\0';        // Null-terminate
         return;
     }
     data->current_offset += required_len;
@@ -152,13 +153,18 @@ static void cpt_printer_enter_node(epc_cpt_node_t * node, void * user_data)
         data->buffer[data->current_offset++] = '\'';
 
         // Line/Col/Length: (line=X, col=X, len=X)
-        required_len = snprintf(data->buffer + data->current_offset,
-                                data->buffer_capacity - data->current_offset,
-                                " (line=%zu, col=%zu, len=%zu)", sposition.line, sposition.col, scontent_len);
+        required_len = snprintf(
+            data->buffer + data->current_offset,
+            data->buffer_capacity - data->current_offset,
+            " (line=%zu, col=%zu, len=%zu)",
+            sposition.line,
+            sposition.col,
+            scontent_len
+        );
         if (required_len < 0 || (size_t)required_len >= (data->buffer_capacity - data->current_offset))
         {
             data->current_offset = data->buffer_capacity - 1; // Mark as full to prevent further writes
-            data->buffer[data->current_offset] = '\0'; // Null-terminate
+            data->buffer[data->current_offset] = '\0';        // Null-terminate
             return;
         }
         data->current_offset += required_len;
@@ -170,14 +176,14 @@ static void cpt_printer_enter_node(epc_cpt_node_t * node, void * user_data)
     data->indent_level++;
 }
 
-static void cpt_printer_exit_node(epc_cpt_node_t * node, void * user_data)
+static void
+cpt_printer_exit_node(epc_cpt_node_t * node, void * user_data)
 {
     (void)node;
     cpt_printer_data_t * data = (cpt_printer_data_t *)user_data;
     // Decrement indent after children have been visited
     data->indent_level--;
 }
-
 
 // Function to print a Concrete Parse Tree (CPT) to a string.
 static char *
@@ -207,7 +213,7 @@ epc_cpt_to_string_private(epc_cpt_node_t * node, int initial_indent_level)
     epc_cpt_visitor_t printer_visitor = {
         .enter_node = cpt_printer_enter_node,
         .exit_node = cpt_printer_exit_node,
-        .user_data = &printer_data
+        .user_data = &printer_data,
     };
 
     // Perform the visit to fill the buffer
@@ -241,8 +247,8 @@ epc_cpt_to_string_private(epc_cpt_node_t * node, int initial_indent_level)
     return final_string;
 }
 
-char * epc_cpt_to_string(epc_cpt_node_t * node)
+char *
+epc_cpt_to_string(epc_cpt_node_t * node)
 {
     return epc_cpt_to_string_private(node, 0);
 }
-

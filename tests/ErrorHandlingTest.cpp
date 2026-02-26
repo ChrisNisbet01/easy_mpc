@@ -3,40 +3,40 @@
 #include <iostream>
 
 extern "C" {
-    #include "easy_pc_private.h"
-    #include <string.h> // For strlen, strcmp
-    #include <stdlib.h> // For calloc, free
+#include "easy_pc_private.h"
+
+#include <stdlib.h> // For calloc, free
+#include <string.h> // For strlen, strcmp
 }
 
-TEST_GROUP(ErrorHandling)
-{
-    void setup() override
-    {
-    }
+TEST_GROUP(ErrorHandling){
+    void setup() override{}
 
-    void teardown() override
-    {
-    }
+    void teardown() override{}
 
     // Helper to create a transient parser_ctx_t for test cases
-    epc_parser_ctx_t* create_transient_parse_ctx(const char* input_str) {
-        epc_parser_ctx_t* ctx = (epc_parser_ctx_t*)calloc(1, sizeof(*ctx));
-        CHECK_TRUE(ctx != NULL);
-        ctx->input_start = input_str;
-        ctx->input_len = ctx->input_start != NULL ? strlen(ctx->input_start) : 0;
-        return ctx;
-    }
+    epc_parser_ctx_t *
+    create_transient_parse_ctx(char const * input_str){
+        epc_parser_ctx_t * ctx = (epc_parser_ctx_t *)calloc(1, sizeof(*ctx));
+CHECK_TRUE(ctx != NULL);
+ctx->input_start = input_str;
+ctx->input_len = ctx->input_start != NULL ? strlen(ctx->input_start) : 0;
+return ctx;
+}
 
-    // Helper to destroy a transient parser_ctx_t
-    void destroy_transient_parse_ctx(epc_parser_ctx_t* ctx) {
-        free(ctx); // Free the parser_ctx_t struct itself
-    }
-};
+// Helper to destroy a transient parser_ctx_t
+void
+destroy_transient_parse_ctx(epc_parser_ctx_t * ctx)
+{
+    free(ctx); // Free the parser_ctx_t struct itself
+}
+}
+;
 
 TEST(ErrorHandling, PCharReportsNullInputError)
 {
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(NULL);
-    epc_parser_t* p = epc_char(NULL, 'a');
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx(NULL);
+    epc_parser_t * p = epc_char(NULL, 'a');
     epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
@@ -44,7 +44,7 @@ TEST(ErrorHandling, PCharReportsNullInputError)
     CHECK_TRUE(result.data.error->input_position == NULL);
     STRCMP_EQUAL("a", result.data.error->expected);
     STRCMP_EQUAL("EOF", result.data.error->found);
-     // Furthest error should be updated
+    // Furthest error should be updated
     CHECK_TRUE(parse_ctx->furthest_error != NULL);
     CHECK_TRUE(parse_ctx->furthest_error->input_position == result.data.error->input_position);
 
@@ -53,8 +53,8 @@ TEST(ErrorHandling, PCharReportsNullInputError)
 
 TEST(ErrorHandling, PCharReportsEmptyInputError)
 {
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx("");
-    epc_parser_t* p = epc_char(NULL, 'a');
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx("");
+    epc_parser_t * p = epc_char(NULL, 'a');
     epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
@@ -71,9 +71,9 @@ TEST(ErrorHandling, PCharReportsEmptyInputError)
 
 TEST(ErrorHandling, PCharReportsMismatchError)
 {
-    const char* input_str = "b";
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(input_str);
-    epc_parser_t* p = epc_char(NULL, 'a');
+    char const * input_str = "b";
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx(input_str);
+    epc_parser_t * p = epc_char(NULL, 'a');
     epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
@@ -90,8 +90,8 @@ TEST(ErrorHandling, PCharReportsMismatchError)
 
 TEST(ErrorHandling, PStringReportsNullInputError)
 {
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(NULL);
-    epc_parser_t* p = epc_string(NULL, "abc");
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx(NULL);
+    epc_parser_t * p = epc_string(NULL, "abc");
     epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
@@ -108,9 +108,9 @@ TEST(ErrorHandling, PStringReportsNullInputError)
 
 TEST(ErrorHandling, PStringReportsTooShortInputError)
 {
-    const char* input_str = "ab";
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(input_str);
-    epc_parser_t* p = epc_string(NULL, "abc");
+    char const * input_str = "ab";
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx(input_str);
+    epc_parser_t * p = epc_string(NULL, "abc");
     epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
@@ -127,9 +127,9 @@ TEST(ErrorHandling, PStringReportsTooShortInputError)
 
 TEST(ErrorHandling, PStringReportsMismatchError)
 {
-    const char* input_str = "axc";
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(input_str);
-    epc_parser_t* p = epc_string(NULL, "abc");
+    char const * input_str = "axc";
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx(input_str);
+    epc_parser_t * p = epc_string(NULL, "abc");
     epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
@@ -146,8 +146,8 @@ TEST(ErrorHandling, PStringReportsMismatchError)
 
 TEST(ErrorHandling, PDigitReportsNullInputError)
 {
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(NULL);
-    epc_parser_t* p = epc_digit(NULL);
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx(NULL);
+    epc_parser_t * p = epc_digit(NULL);
     epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
@@ -164,8 +164,8 @@ TEST(ErrorHandling, PDigitReportsNullInputError)
 
 TEST(ErrorHandling, PDigitReportsEmptyInputError)
 {
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx("");
-    epc_parser_t* p = epc_digit(NULL);
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx("");
+    epc_parser_t * p = epc_digit(NULL);
     epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
@@ -182,9 +182,9 @@ TEST(ErrorHandling, PDigitReportsEmptyInputError)
 
 TEST(ErrorHandling, PDigitReportsMismatchError)
 {
-    const char* input_str = "a";
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(input_str);
-    epc_parser_t* p = epc_digit(NULL);
+    char const * input_str = "a";
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx(input_str);
+    epc_parser_t * p = epc_digit(NULL);
     epc_parse_result_t result = p->parse_fn(p, parse_ctx, 0);
 
     CHECK_TRUE(result.is_error);
@@ -201,9 +201,9 @@ TEST(ErrorHandling, PDigitReportsMismatchError)
 
 TEST(ErrorHandling, POrReportsErrorWhenNoAlternatives)
 {
-    const char* input_str = "abc";
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(input_str);
-    epc_parser_t* p_or_parser = epc_or(NULL, 0);
+    char const * input_str = "abc";
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx(input_str);
+    epc_parser_t * p_or_parser = epc_or(NULL, 0);
 
     epc_parse_result_t result = p_or_parser->parse_fn(p_or_parser, parse_ctx, 0);
 
@@ -211,7 +211,7 @@ TEST(ErrorHandling, POrReportsErrorWhenNoAlternatives)
     CHECK_TRUE(result.data.error != NULL);
     STRCMP_EQUAL("No alternatives provided to 'or' parser", result.data.error->message);
     STRCMP_EQUAL(input_str, result.data.error->input_position);
-    STRCMP_EQUAL("or_parser", result.data.error->expected); // The parser's name as expected
+    STRCMP_EQUAL("or", result.data.error->expected); // The parser's name as expected
     STRCMP_EQUAL("N/A", result.data.error->found);
     CHECK_TRUE(parse_ctx->furthest_error != NULL);
     CHECK_TRUE(parse_ctx->furthest_error->input_position == result.data.error->input_position);
@@ -221,11 +221,11 @@ TEST(ErrorHandling, POrReportsErrorWhenNoAlternatives)
 
 TEST(ErrorHandling, POrReportsErrorWhenAllAlternativesFail)
 {
-    const char* input_str = "abc";
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(input_str);
-    epc_parser_t* p_x = epc_char(NULL, 'x');
-    epc_parser_t* p_y = epc_char(NULL, 'y');
-    epc_parser_t* p_or_parser = epc_or(NULL, 2, p_x, p_y);
+    char const * input_str = "abc";
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx(input_str);
+    epc_parser_t * p_x = epc_char(NULL, 'x');
+    epc_parser_t * p_y = epc_char(NULL, 'y');
+    epc_parser_t * p_or_parser = epc_or(NULL, 2, p_x, p_y);
 
     epc_parse_result_t result = p_or_parser->parse_fn(p_or_parser, parse_ctx, 0);
 
@@ -235,7 +235,7 @@ TEST(ErrorHandling, POrReportsErrorWhenAllAlternativesFail)
     STRCMP_EQUAL("No alternative matched", result.data.error->message); // Updated expectation
 
     STRCMP_EQUAL(input_str, result.data.error->input_position); // Changed to STRCMP_EQUAL
-    STRCMP_EQUAL("x or y", result.data.error->expected); // Updated to aggregated expected
+    STRCMP_EQUAL("x or y", result.data.error->expected);        // Updated to aggregated expected
     STRCMP_EQUAL("abc", result.data.error->found);
     CHECK_TRUE(parse_ctx->furthest_error != NULL);
     CHECK_TRUE(parse_ctx->furthest_error->input_position == result.data.error->input_position);
@@ -245,13 +245,13 @@ TEST(ErrorHandling, POrReportsErrorWhenAllAlternativesFail)
 
 TEST(ErrorHandling, FurthestErrorTracking)
 {
-    const char* input_str = "abcdef";
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx(input_str);
+    char const * input_str = "abcdef";
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx(input_str);
 
-    epc_parser_t* p_x = epc_char(NULL, 'x'); // Fails at 'a'
-    epc_parser_t* p_def = epc_string(NULL, "def"); // Fails at 'b' after 'd' (too short from current position)
-    epc_parser_t* p_or_x_def = epc_or(NULL, 2, p_x, p_def);
-    epc_parser_t* p_z = epc_char(NULL, 'z'); // Fails at 'a' as well
+    epc_parser_t * p_x = epc_char(NULL, 'x');       // Fails at 'a'
+    epc_parser_t * p_def = epc_string(NULL, "def"); // Fails at 'b' after 'd' (too short from current position)
+    epc_parser_t * p_or_x_def = epc_or(NULL, 2, p_x, p_def);
+    epc_parser_t * p_z = epc_char(NULL, 'z'); // Fails at 'a' as well
 
     epc_parse_result_t result_x = p_x->parse_fn(p_x, parse_ctx, 0);
     CHECK_TRUE(result_x.is_error);
@@ -261,11 +261,11 @@ TEST(ErrorHandling, FurthestErrorTracking)
     CHECK_TRUE(parse_ctx->furthest_error->input_position == result_x.data.error->input_position);
 
     // Now make p_char_g fail after p_char_f succeeded
-    epc_parser_t* p_char_f = epc_char(NULL, 'f'); // Parser for 'f'
+    epc_parser_t * p_char_f = epc_char(NULL, 'f');                         // Parser for 'f'
     epc_parse_result_t res_f = p_char_f->parse_fn(p_char_f, parse_ctx, 5); // Try 'f' on 'f'
-    CHECK_FALSE(res_f.is_error); // Should succeed
+    CHECK_FALSE(res_f.is_error);                                           // Should succeed
 
-    epc_parser_t* p_char_g = epc_char(NULL, 'g'); // Parser for 'g'
+    epc_parser_t * p_char_g = epc_char(NULL, 'g');                         // Parser for 'g'
     epc_parse_result_t res_g = p_char_g->parse_fn(p_char_g, parse_ctx, 5); // Try 'g' on 'f'
     CHECK_TRUE(res_g.is_error);
 

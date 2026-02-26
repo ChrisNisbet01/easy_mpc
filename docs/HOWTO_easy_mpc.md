@@ -80,8 +80,6 @@ struct epc_cpt_node_t {
     const char* name;          // The name of the parser that created this node
     const char* content;       // Pointer to the matched substring in the original input
     size_t len;                // Length of the matched substring
-    int line;                  // Line number (to be calculated, currently 0)
-    int col;                   // Column number (to be calculated, currently 0)
     epc_cpt_node_t** children; // Array of child nodes
     int children_count;        // Number of child nodes
     epc_ast_semantic_action_t ast_config; // A copy of the ast action assigned to the associated parser that created the node.
@@ -99,7 +97,7 @@ Matches a single, specific character.
 ```c
 // Matches the character 'a'
 epc_parser_t* p_a = epc_char_l(list, "a", 'a');
-// On success, creates an epc_cpt_node_t with tag "char", name "char_parser", content "a", len 1.
+// On success, creates an epc_cpt_node_t with tag "char", name "char", content "a", len 1.
 ```
 
 ### `epc_string`
@@ -109,7 +107,7 @@ Matches an exact sequence of characters (a string literal).
 ```c
 // Matches the string "hello"
 epc_parser_t* p_hello = epc_string_l(list, "hello_string", "hello");
-// On success, creates an epc_cpt_node_t with tag "string", name "string_parser", content "hello", len 5.
+// On success, creates an epc_cpt_node_t with tag "string", name "string", content "hello", len 5.
 ```
 
 ### `epc_digit`, `epc_alpha`, `epc_alphanum`, `epc_int`, `epc_double`, `epc_space`
@@ -288,7 +286,7 @@ void epc_parser_set_ast_action(epc_parser_t* p, int action_type);
 **Example:**
 
 ```c
-epc_parser_t* p_number_parser = epc_int_l(list, "number_parser");
+epc_parser_t* p_number_parser = epc_int_l(list, "number");
 epc_parser_set_ast_action(p_number_parser, AST_ACTION_CREATE_NUMBER_FROM_CONTENT);
 // When p_number_parser succeeds, the visitor will be told to create a number AST node.
 ```

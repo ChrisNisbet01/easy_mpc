@@ -1036,7 +1036,7 @@ epc_c_comment_l(epc_parser_list * list, char const * name)
  * parser definition when its dependencies have been created, then finally copy the final parser
  * details to the forward reference by calling by epc_parser_duplicate().
  *
- * @param name A string name for the parser, primarily for debugging and CPT visualization.
+ * @param name An optional name for the parser, primarily for debugging and CPT visualization.
  * @return A pointer to the newly allocated and initialized `parser_t` instance, or NULL on error.
  */
 ATTR_NONNULL(1)

@@ -2,7 +2,6 @@
 
 #include <easy_pc/easy_pc.h>
 #include <easy_pc/easy_pc_ast.h> // Include the new AST header
-
 #include <stdarg.h>
 
 // The Parse Tree Node
@@ -15,15 +14,21 @@
  */
 struct epc_cpt_node_t
 {
-    const char * tag;                     /**< @brief A string tag identifying the type of this node (e.g., "char", "string", "and"). */
-    const char * name;                    /**< @brief The name assigned to the parser that generated this node, for debugging/identification. */
-    const char * content;                 /**< @brief A pointer to the start of the matched substring in the original input (or within the parser itself in the case of epc_succeed()). */
-    size_t len;                           /**< @brief The length of the matched substring. */
-    size_t semantic_start_offset;         /**< @brief Offset from `content` to the start of the semantically relevant part. */
-    size_t semantic_end_offset;           /**< @brief Length from the end of `content` to exclude from the semantically relevant part. */
-    epc_cpt_node_t ** children;           /**< @brief An array of pointers to child `pt_node_t`s, representing sub-matches. */
-    int children_count;                   /**< @brief The number of children in the `children` array. */
-    epc_ast_semantic_action_t ast_config; /**< @brief A copy of the ast action assigned to the associated parser that created the node. */
+    char const * tag;     /**< @brief A string tag identifying the type of this node (e.g., "char", "string", "and"). */
+    char const * name;    /**< @brief The name assigned to the parser that generated this node, for
+                           *    debugging/identification.
+                           */
+    char const * content; /**< @brief A pointer to the start of the matched substring in the original input (or within
+                             the parser itself in the case of epc_succeed()). */
+    size_t len;           /**< @brief The length of the matched substring. */
+    size_t semantic_start_offset; /**< @brief Offset from `content` to the start of the semantically relevant part. */
+    size_t semantic_end_offset;   /**< @brief Length from the end of `content` to exclude from the semantically relevant
+                                     part. */
+    epc_cpt_node_t ** children;   /**< @brief An array of pointers to child `pt_node_t`s, representing sub-matches. */
+    int children_count;           /**< @brief The number of children in the `children` array. */
+    epc_ast_semantic_action_t ast_config; /**< @brief A copy of the ast action assigned to the associated parser that
+                                           *    created the node.
+                                           */
 };
 
 // Internal types for AST builder stack management
@@ -36,14 +41,14 @@ typedef enum
 typedef struct
 {
     epc_ast_item_type_t type;
-    void *ptr; // Points to user's AST node or is NULL for a placeholder
+    void * ptr; // Points to user's AST node or is NULL for a placeholder
 } epc_ast_stack_entry_t;
 
 struct epc_ast_builder_ctx_t
 {
     epc_ast_stack_entry_t * stack;
-    int top;          // Number of items currently on stack
-    int capacity;     // Current allocated capacity of the stack
+    int top;      // Number of items currently on stack
+    int capacity; // Current allocated capacity of the stack
     epc_ast_hook_registry_t * registry;
     void * user_data;
     bool has_error;
@@ -54,7 +59,7 @@ struct epc_ast_builder_ctx_t
 // This will be internally managed by epc_parse_input
 struct epc_parser_ctx_t
 {
-    const char * input_start;
+    char const * input_start;
     size_t input_len;
     epc_parser_error_t * furthest_error;
 };
@@ -140,53 +145,47 @@ struct epc_parser_t
     // Parser-specific data
     parser_data_type_st data;
 
-    const char * name;   /* Must be freed when parser is destroyed. */
-    const char * expected_value;
+    char const * name; /* Must be freed when parser is destroyed. */
+    char const * tag;  /* Unique tag for each parser type. Must _not_ be freed when the parser is destroyed. */
+    char const * expected_value;
 
     epc_ast_semantic_action_t ast_config;
 };
 
 struct epc_ast_hook_registry_t
 {
-    epc_ast_action_cb * callbacks;     /**< @brief Array of semantic action callbacks, indexed by action value. */
-    int action_count;                  /**< @brief The number of possible semantic actions. */
-    epc_ast_node_free_cb free_node;    /**< @brief Callback to free a user-defined AST node. */
-    epc_ast_enter_cb enter_node;       /**< @brief Callback for entering a CPT node. */
+    epc_ast_action_cb * callbacks;  /**< @brief Array of semantic action callbacks, indexed by action value. */
+    int action_count;               /**< @brief The number of possible semantic actions. */
+    epc_ast_node_free_cb free_node; /**< @brief Callback to free a user-defined AST node. */
+    epc_ast_enter_cb enter_node;    /**< @brief Callback for entering a CPT node. */
 };
 
 EASY_PC_HIDDEN
 epc_parse_result_t
-epc_unparsed_error_result(
-    size_t input_offset,
-    const char * message,
-    const char * expected,
-    const char * found
-);
+epc_unparsed_error_result(size_t input_offset, char const * message, char const * expected, char const * found);
 
-void
-epc_parser_result_cleanup(epc_parse_result_t * result);
+void epc_parser_result_cleanup(epc_parse_result_t * result);
 
 ATTR_NONNULL(1, 2)
 EASY_PC_HIDDEN
-epc_cpt_node_t *
-epc_node_alloc(epc_parser_t * parser, char const * const tag);
+epc_cpt_node_t * epc_node_alloc(epc_parser_t * parser, char const * const tag);
 
 EASY_PC_HIDDEN
-void
-epc_node_free(epc_cpt_node_t * node);
+void epc_node_free(epc_cpt_node_t * node);
 
 EASY_PC_HIDDEN
-void
-epc_parser_error_free(epc_parser_error_t * error);
+char const * epc_node_id(epc_cpt_node_t const * node);
 
 EASY_PC_HIDDEN
-epc_parser_error_t *
-parser_furthest_error_copy(epc_parser_ctx_t * ctx);
-
-void
-epc_parser_free(epc_parser_t * parser);
+void epc_parser_error_free(epc_parser_error_t * error);
 
 EASY_PC_HIDDEN
-epc_line_col_t
-epc_calculate_line_and_column(char const * start, char const * current);
+epc_parser_error_t * parser_furthest_error_copy(epc_parser_ctx_t * ctx);
 
+void epc_parser_free(epc_parser_t * parser);
+
+EASY_PC_HIDDEN
+epc_line_col_t epc_calculate_line_and_column(char const * start, char const * current);
+
+EASY_PC_HIDDEN
+char const * epc_parser_get_name(epc_parser_t const * p);

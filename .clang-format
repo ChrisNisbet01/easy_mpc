@@ -12,6 +12,7 @@ AllowShortBlocksOnASingleLine: false
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: None
+AllowShortInitializersOnASingleLine: false
 
 # Const Correctness (East Const)
 # Note: Requires clang-format 14 or higher

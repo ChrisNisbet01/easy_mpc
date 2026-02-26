@@ -3,50 +3,48 @@
 #include <iostream>
 
 extern "C" {
-    #include "easy_pc_private.h"
-    #include <string.h> // For strlen, strcmp
-    #include <stdlib.h> // For calloc, free
+#include "easy_pc_private.h"
+
+#include <stdlib.h> // For calloc, free
+#include <string.h> // For strlen, strcmp
 }
 
-TEST_GROUP(CombinatorTest)
-{
-    void setup() override
-    {
-    }
+TEST_GROUP(CombinatorTest){
+    void setup() override{}
 
-    void teardown() override
-    {
-    }
+    void teardown() override{}
 
     // Helper to create a transient parser_ctx_t for test cases
-    epc_parser_ctx_t* create_transient_parse_ctx(const char* input_str)
-    {
-        epc_parser_ctx_t* ctx = (epc_parser_ctx_t*)calloc(1, sizeof(*ctx));
-        CHECK_TRUE(ctx != NULL);
-        ctx->input_start = input_str;
-        ctx->input_len = ctx->input_start != NULL ? strlen(ctx->input_start) : 0;
-        return ctx;
-    }
+    epc_parser_ctx_t
+    * create_transient_parse_ctx(char const * input_str){
+        epc_parser_ctx_t * ctx = (epc_parser_ctx_t *)calloc(1, sizeof(*ctx));
+CHECK_TRUE(ctx != NULL);
+ctx->input_start = input_str;
+ctx->input_len = ctx->input_start != NULL ? strlen(ctx->input_start) : 0;
+return ctx;
+}
 
-    // Helper to destroy a transient parser_ctx_t
-    void destroy_transient_parse_ctx(epc_parser_ctx_t* ctx)
-    {
-        free(ctx); // Free the parser_ctx_t struct itself
-    }
-};
+// Helper to destroy a transient parser_ctx_t
+void
+destroy_transient_parse_ctx(epc_parser_ctx_t * ctx)
+{
+    free(ctx); // Free the parser_ctx_t struct itself
+}
+}
+;
 
 TEST(CombinatorTest, PStarMatchesZero)
 {
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx("");
-    epc_parser_t* p_char_a = epc_char(NULL, 'a');
-    epc_parser_t* p_star_a = epc_many(NULL, p_char_a);
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx("");
+    epc_parser_t * p_char_a = epc_char(NULL, 'a');
+    epc_parser_t * p_star_a = epc_many(NULL, p_char_a);
 
     epc_parse_result_t result = p_star_a->parse_fn(p_star_a, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
     STRCMP_EQUAL("many", result.data.success->tag);
-    STRCMP_EQUAL("many_parser", result.data.success->name);
+    POINTERS_EQUAL(result.data.success->name, NULL); // Name should be NULL since we didn't set it
     STRNCMP_EQUAL("", result.data.success->content, 0);
     LONGS_EQUAL(0, result.data.success->len);
     LONGS_EQUAL(0, result.data.success->children_count);
@@ -56,16 +54,16 @@ TEST(CombinatorTest, PStarMatchesZero)
 
 TEST(CombinatorTest, PStarMatchesOne)
 {
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx("abc");
-    epc_parser_t* p_char_a = epc_char(NULL, 'a');
-    epc_parser_t* p_star_a = epc_many(NULL, p_char_a);
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx("abc");
+    epc_parser_t * p_char_a = epc_char(NULL, 'a');
+    epc_parser_t * p_star_a = epc_many(NULL, p_char_a);
 
     epc_parse_result_t result = p_star_a->parse_fn(p_star_a, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
     STRCMP_EQUAL("many", result.data.success->tag);
-    STRCMP_EQUAL("many_parser", result.data.success->name);
+    POINTERS_EQUAL(result.data.success->name, NULL); // Name should be NULL since we didn't set it
     STRNCMP_EQUAL("a", result.data.success->content, 1);
     LONGS_EQUAL(1, result.data.success->len);
     LONGS_EQUAL(1, result.data.success->children_count);
@@ -76,16 +74,16 @@ TEST(CombinatorTest, PStarMatchesOne)
 
 TEST(CombinatorTest, PStarMatchesMultiple)
 {
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx("aaabc");
-    epc_parser_t* p_char_a = epc_char(NULL, 'a');
-    epc_parser_t* p_star_a = epc_many(NULL, p_char_a);
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx("aaabc");
+    epc_parser_t * p_char_a = epc_char(NULL, 'a');
+    epc_parser_t * p_star_a = epc_many(NULL, p_char_a);
 
     epc_parse_result_t result = p_star_a->parse_fn(p_star_a, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
     STRCMP_EQUAL("many", result.data.success->tag);
-    STRCMP_EQUAL("many_parser", result.data.success->name);
+    POINTERS_EQUAL(result.data.success->name, NULL); // Name should be NULL since we didn't set it
     STRNCMP_EQUAL("aaa", result.data.success->content, 3);
     LONGS_EQUAL(3, result.data.success->len);
     LONGS_EQUAL(3, result.data.success->children_count);
@@ -98,16 +96,16 @@ TEST(CombinatorTest, PStarMatchesMultiple)
 
 TEST(CombinatorTest, PStarMatchesMultipleThenFails)
 {
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx("aaabbc");
-    epc_parser_t* p_char_a = epc_char(NULL, 'a');
-    epc_parser_t* p_star_a = epc_many(NULL, p_char_a);
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx("aaabbc");
+    epc_parser_t * p_char_a = epc_char(NULL, 'a');
+    epc_parser_t * p_star_a = epc_many(NULL, p_char_a);
 
     epc_parse_result_t result = p_star_a->parse_fn(p_star_a, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
     STRCMP_EQUAL("many", result.data.success->tag);
-    STRCMP_EQUAL("many_parser", result.data.success->name);
+    POINTERS_EQUAL(result.data.success->name, NULL); // Name should be NULL since we didn't set it
     STRNCMP_EQUAL("aaa", result.data.success->content, 3);
     LONGS_EQUAL(3, result.data.success->len);
     LONGS_EQUAL(3, result.data.success->children_count);
@@ -120,16 +118,16 @@ TEST(CombinatorTest, PStarMatchesMultipleThenFails)
 
 TEST(CombinatorTest, PPlusMatchesOne)
 {
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx("abc");
-    epc_parser_t* p_char_a = epc_char(NULL, 'a');
-    epc_parser_t* p_plus_a = epc_plus(NULL, p_char_a);
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx("abc");
+    epc_parser_t * p_char_a = epc_char(NULL, 'a');
+    epc_parser_t * p_plus_a = epc_plus(NULL, p_char_a);
 
     epc_parse_result_t result = p_plus_a->parse_fn(p_plus_a, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
     STRCMP_EQUAL("plus", result.data.success->tag);
-    STRCMP_EQUAL("plus_parser", result.data.success->name);
+    POINTERS_EQUAL(result.data.success->name, NULL); // Name should be NULL since we didn't set it
     STRNCMP_EQUAL("a", result.data.success->content, 1);
     LONGS_EQUAL(1, result.data.success->len);
     LONGS_EQUAL(1, result.data.success->children_count);
@@ -140,16 +138,16 @@ TEST(CombinatorTest, PPlusMatchesOne)
 
 TEST(CombinatorTest, PPlusMatchesMultiple)
 {
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx("aaabc");
-    epc_parser_t* p_char_a = epc_char(NULL, 'a');
-    epc_parser_t* p_plus_a = epc_plus(NULL, p_char_a);
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx("aaabc");
+    epc_parser_t * p_char_a = epc_char(NULL, 'a');
+    epc_parser_t * p_plus_a = epc_plus(NULL, p_char_a);
 
     epc_parse_result_t result = p_plus_a->parse_fn(p_plus_a, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
     STRCMP_EQUAL("plus", result.data.success->tag);
-    STRCMP_EQUAL("plus_parser", result.data.success->name);
+    POINTERS_EQUAL(result.data.success->name, NULL); // Name should be NULL since we didn't set it
     STRNCMP_EQUAL("aaa", result.data.success->content, 3);
     LONGS_EQUAL(3, result.data.success->len);
     LONGS_EQUAL(3, result.data.success->children_count);
@@ -162,9 +160,9 @@ TEST(CombinatorTest, PPlusMatchesMultiple)
 
 TEST(CombinatorTest, PPlusFailsOnZeroMatches)
 {
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx("bbc");
-    epc_parser_t* p_char_a = epc_char(NULL, 'a');
-    epc_parser_t* p_plus_a = epc_plus(NULL, p_char_a);
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx("bbc");
+    epc_parser_t * p_char_a = epc_char(NULL, 'a');
+    epc_parser_t * p_plus_a = epc_plus(NULL, p_char_a);
 
     epc_parse_result_t result = p_plus_a->parse_fn(p_plus_a, parse_ctx, 0);
 
@@ -180,16 +178,16 @@ TEST(CombinatorTest, PPlusFailsOnZeroMatches)
 
 TEST(CombinatorTest, PPlusMatchesMultipleThenFails)
 {
-    epc_parser_ctx_t* parse_ctx = create_transient_parse_ctx("aaabbc");
-    epc_parser_t* p_char_a = epc_char(NULL, 'a');
-    epc_parser_t* p_plus_a = epc_plus(NULL, p_char_a);
+    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx("aaabbc");
+    epc_parser_t * p_char_a = epc_char(NULL, 'a');
+    epc_parser_t * p_plus_a = epc_plus(NULL, p_char_a);
 
     epc_parse_result_t result = p_plus_a->parse_fn(p_plus_a, parse_ctx, 0);
 
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
     STRCMP_EQUAL("plus", result.data.success->tag);
-    STRCMP_EQUAL("plus_parser", result.data.success->name);
+    POINTERS_EQUAL(result.data.success->name, NULL); // Name should be NULL since we didn't set it
     STRNCMP_EQUAL("aaa", result.data.success->content, 3);
     LONGS_EQUAL(3, result.data.success->len);
     LONGS_EQUAL(3, result.data.success->children_count);
