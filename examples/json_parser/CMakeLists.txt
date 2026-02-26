@@ -10,7 +10,7 @@ add_dependencies(${app} all_unit_tests)
 target_compile_options(${app} PRIVATE -Wall -Wextra -pedantic -Werror)
 
 target_link_libraries(${app} PRIVATE
-    easy_pc
+    easy_pc_shared
 )
 
 target_include_directories(${app} PRIVATE

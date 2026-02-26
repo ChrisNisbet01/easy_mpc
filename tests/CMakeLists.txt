@@ -15,7 +15,7 @@ target_include_directories(TerminalParsersTest  PRIVATE
 )
 
 target_link_libraries(TerminalParsersTest  PRIVATE
-    easy_pc
+    easy_pc_shared
     CppUTest
     CppUTestExt
 )
@@ -38,7 +38,7 @@ target_include_directories(TerminalParsersNewTest PRIVATE
 )
 
 target_link_libraries(TerminalParsersNewTest PRIVATE
-    easy_pc
+    easy_pc_shared
     CppUTest
     CppUTestExt
 )
@@ -61,7 +61,7 @@ target_include_directories(ErrorHandlingTest  PRIVATE
 )
 
 target_link_libraries(ErrorHandlingTest  PRIVATE
-    easy_pc
+    easy_pc_shared
     CppUTest
     CppUTestExt
 )
@@ -84,7 +84,7 @@ target_include_directories(CptPrinterTest  PRIVATE
 )
 
 target_link_libraries(CptPrinterTest  PRIVATE
-    easy_pc
+    easy_pc_shared
     CppUTest
     CppUTestExt
 )
@@ -107,7 +107,7 @@ target_include_directories(CptVisitorTest  PRIVATE
 )
 
 target_link_libraries(CptVisitorTest  PRIVATE
-    easy_pc
+    easy_pc_shared
     CppUTest
     CppUTestExt
 )
@@ -130,7 +130,7 @@ target_include_directories(CombinatorTest  PRIVATE
 )
 
 target_link_libraries(CombinatorTest  PRIVATE
-    easy_pc
+    easy_pc_shared
     CppUTest
     CppUTestExt
 )
@@ -153,7 +153,7 @@ target_include_directories(CombinatorNewTest PRIVATE
 )
 
 target_link_libraries(CombinatorNewTest PRIVATE
-    easy_pc
+    easy_pc_shared
     CppUTest
     CppUTestExt
 )
@@ -176,7 +176,7 @@ target_include_directories(ParserListTest PRIVATE
 )
 
 target_link_libraries(ParserListTest PRIVATE
-    easy_pc
+    easy_pc_shared
     CppUTest
     CppUTestExt
 )
@@ -202,7 +202,7 @@ target_include_directories(GdlParserTest PRIVATE
 )
 
 target_link_libraries(GdlParserTest PRIVATE
-    easy_pc
+    easy_pc_shared
     CppUTest
     CppUTestExt
 )
@@ -229,7 +229,7 @@ target_include_directories(GdlAstBuilderTest PRIVATE
 )
 
 target_link_libraries(GdlAstBuilderTest PRIVATE
-    easy_pc
+    easy_pc_shared
     CppUTest
     CppUTestExt
 )
@@ -257,7 +257,7 @@ target_include_directories(GeneratedParserTest PRIVATE
 )
 
 target_link_libraries(GeneratedParserTest PRIVATE
-    easy_pc
+    easy_pc_shared
     CppUTest
     CppUTestExt
 )
@@ -280,7 +280,7 @@ target_include_directories(AstBuilderTest PRIVATE
 )
 
 target_link_libraries(AstBuilderTest PRIVATE
-    easy_pc
+    easy_pc_shared
     CppUTest
     CppUTestExt
 )

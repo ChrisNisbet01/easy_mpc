@@ -8,7 +8,7 @@ target_compile_options(${app} PRIVATE -Wall -Wextra -pedantic)
 add_dependencies(${app} all_unit_tests)
 
 # Link the GDL compiler against the easy_pc library
-target_link_libraries(${app} PRIVATE easy_pc)
+target_link_libraries(${app} PRIVATE easy_pc_shared)
 
 # Set include directories for easy_pc headers
 target_include_directories(${app} PRIVATE ${CMAKE_SOURCE_DIR}/include)

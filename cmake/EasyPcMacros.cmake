@@ -38,8 +38,11 @@ function(epc_generate_grammar)
 
     # Create a library with the generated sources
     add_library("${EPC_GEN_TARGET}" STATIC "${GENERATED_C}")
-    target_include_directories("${EPC_GEN_TARGET}" PUBLIC "${EPC_GEN_OUTPUT_DIR}")
-    target_link_libraries("${EPC_GEN_TARGET}" PUBLIC easy_pc)
+    target_include_directories("${EPC_GEN_TARGET}" PUBLIC
+        "${EPC_GEN_OUTPUT_DIR}"
+        "${CMAKE_SOURCE_DIR}/include" # Add easy_pc's public include directory
+    )
+    target_link_libraries("${EPC_GEN_TARGET}" PUBLIC easy_pc_shared)
 
     # Ensure gdl_compiler is built before this library
     add_dependencies("${EPC_GEN_TARGET}" gdl_compiler)

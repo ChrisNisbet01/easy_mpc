@@ -17,14 +17,14 @@ add_executable(${APP}
 
 add_dependencies(${APP} all_unit_tests)
 
-# Link against the generated library and easy_pc
+# Link against the generated library and easy_pc_shared
 target_link_libraries(${APP}
     PRIVATE
-    easy_pc
+    easy_pc_shared
     json_pointer_grammar
 )
 
-# Include directories for easy_pc
+# Include directories for easy_pc_shared
 target_include_directories(${APP}
     PRIVATE
     ${CMAKE_SOURCE_DIR}/include
