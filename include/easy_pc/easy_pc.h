@@ -6,39 +6,38 @@
 
 // For symbol visibility control
 #if defined _WIN32 || defined __CYGWIN__
-# ifdef BUILDING_EASY_PC
-#   ifdef __GNUC__
-#     define EASY_PC_API __attribute__ ((dllexport))
-#   else
-#     define EASY_PC_API __declspec(dllexport)
-#   endif
-# else
-#   ifdef __GNUC__
-#     define EASY_PC_API __attribute__ ((dllimport))
-#   else
-#     define EASY_PC_API __declspec(dllimport)
-#   endif
-# endif
-# define EASY_PC_HIDDEN
+#ifdef BUILDING_EASY_PC
+#ifdef __GNUC__
+#define EASY_PC_API __attribute__((dllexport))
 #else
-# if __GNUC__ >= 4
-#   define EASY_PC_API __attribute__ ((visibility ("default")))
-#   define EASY_PC_HIDDEN __attribute__ ((visibility ("hidden")))
-# else
-#   define EASY_PC_API
-#   define EASY_PC_HIDDEN
-# endif
+#define EASY_PC_API __declspec(dllexport)
+#endif
+#else
+#ifdef __GNUC__
+#define EASY_PC_API __attribute__((dllimport))
+#else
+#define EASY_PC_API __declspec(dllimport)
+#endif
+#endif
+#define EASY_PC_HIDDEN
+#else
+#if __GNUC__ >= 4
+#define EASY_PC_API __attribute__((visibility("default")))
+#define EASY_PC_HIDDEN __attribute__((visibility("hidden")))
+#else
+#define EASY_PC_API
+#define EASY_PC_HIDDEN
+#endif
 #endif
 
 #ifdef __GNUC__
-#   define ATTR_NONNULL(...) __attribute__((nonnull(__VA_ARGS__)))
+#define ATTR_NONNULL(...) __attribute__((nonnull(__VA_ARGS__)))
 #else
-#   define ATTR_NONNULL(...)
+#define ATTR_NONNULL(...)
 #endif
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 // Forward declarations of structs
@@ -64,11 +63,13 @@ typedef struct epc_line_col_t
  */
 typedef struct epc_parser_error_t
 {
-    const char * message;        /**< @brief A descriptive error message. */
-    const char * input_position; /**< @brief Pointer to the exact position in the input string where the error occurred. */
-    epc_line_col_t position;     /**< @brief Line and column if the input where the error occurred (0-indexed, calculated later). */
-    const char * expected;       /**< @brief A string describing what the parser expected at the error position. */
-    const char * found;          /**< @brief A string describing what the parser actually found at the error position. */
+    char const * message; /**< @brief A descriptive error message. */
+    char const *
+        input_position; /**< @brief Pointer to the exact position in the input string where the error occurred. */
+    epc_line_col_t
+        position; /**< @brief Line and column if the input where the error occurred (0-indexed, calculated later). */
+    char const * expected; /**< @brief A string describing what the parser expected at the error position. */
+    char const * found;    /**< @brief A string describing what the parser actually found at the error position. */
 } epc_parser_error_t;
 
 // Structure to hold AST-related metadata for each parser
@@ -81,21 +82,21 @@ typedef struct epc_parser_error_t
  */
 typedef struct
 {
-    bool assigned;   /**< @brief True if a semantic action identifier has been assigned to the node. */
-    int action;      /**< @brief The identifier for the semantic action to perform.
-                      *          Concrete values for actions are defined elsewhere (e.g., in ast_builder.h).
-                      */
+    bool assigned; /**< @brief True if a semantic action identifier has been assigned to the node. */
+    int action;    /**< @brief The identifier for the semantic action to perform.
+                    *          Concrete values for actions are defined elsewhere (e.g., in ast_builder.h).
+                    */
 } epc_ast_semantic_action_t;
 
 // The Result of a Parse Attempt
 typedef struct
 {
-    bool is_error;                  /**< @brief A flag: false for success, true for error. */
+    bool is_error; /**< @brief A flag: false for success, true for error. */
     union
     {
         epc_cpt_node_t * success;   /**< @brief Pointer to the root of the generated CPT on successful parsing. */
         epc_parser_error_t * error; /**< @brief Pointer to detailed error information on parsing failure. */
-    } data; /**< @brief Union holding either the success node or error details. */
+    } data;                         /**< @brief Union holding either the success node or error details. */
 } epc_parse_result_t;
 
 // --- New: Parse Session Result ---
@@ -111,8 +112,9 @@ typedef struct
  */
 typedef struct epc_parse_session_t
 {
-    epc_parse_result_t result;             /**< @brief The actual parse success/failure and CPT/error information. */
-    epc_parser_ctx_t * internal_parse_ctx; /**< @brief Internal context for the parsing operation, managing CPT/error memory. */
+    epc_parse_result_t result; /**< @brief The actual parse success/failure and CPT/error information. */
+    epc_parser_ctx_t *
+        internal_parse_ctx; /**< @brief Internal context for the parsing operation, managing CPT/error memory. */
 } epc_parse_session_t;
 
 // Visitor struct for CPT traversal
@@ -137,9 +139,9 @@ typedef struct
      * @param user_data A user-defined data pointer passed through the visitation.
      */
     void (*exit_node)(epc_cpt_node_t * node, void * user_data);
-    void * user_data; /**< @brief A user-defined data pointer that is passed to `enter_node` and `exit_node` callbacks. */
+    void *
+        user_data; /**< @brief A user-defined data pointer that is passed to `enter_node` and `exit_node` callbacks. */
 } epc_cpt_visitor_t;
-
 
 // Function to visit a CPT (remains)
 /**
@@ -160,8 +162,7 @@ EASY_PC_API void epc_cpt_visit_nodes(epc_cpt_node_t * root, epc_cpt_visitor_t * 
  *
  * @return A new `epc_parser_list` instance, or NULL on error.
  */
-EASY_PC_API epc_parser_list *
-epc_parser_list_create(void);
+EASY_PC_API epc_parser_list * epc_parser_list_create(void);
 
 /**
  * @brief Adds a parser to the parser list.
@@ -172,17 +173,14 @@ epc_parser_list_create(void);
  * @param parser The parser to add.
  * @return The parser that was added, or NULL if the input parser was NULL or an error occurred.
  */
-EASY_PC_API epc_parser_t *
-epc_parser_list_add(epc_parser_list * list, epc_parser_t * parser);
+EASY_PC_API epc_parser_t * epc_parser_list_add(epc_parser_list * list, epc_parser_t * parser);
 
 /**
  * @brief Frees all parsers in the list and the list itself.
  *
  * @param list The parser list to free.
  */
-EASY_PC_API void
-epc_parser_list_free(epc_parser_list * list);
-
+EASY_PC_API void epc_parser_list_free(epc_parser_list * list);
 
 // --- Parser List Helpers (Auto-generated) ---
 
@@ -203,7 +201,8 @@ EASY_PC_API epc_parser_t * epc_char(char const * name, char c);
  * @param c The character to match.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_char_l(epc_parser_list * list, char const * name, char c)
+static inline epc_parser_t *
+epc_char_l(epc_parser_list * list, char const * name, char c)
 {
     return epc_parser_list_add(list, epc_char(name, c));
 }
@@ -214,7 +213,7 @@ static inline epc_parser_t * epc_char_l(epc_parser_list * list, char const * nam
  * @param s The string literal to match. The lifetime of `s` must exceed the parser's.
  * @return A new `parser_t` instance, or NULL on error.
  */
-EASY_PC_API epc_parser_t * epc_string(char const * name, const char * s);
+EASY_PC_API epc_parser_t * epc_string(char const * name, char const * s);
 
 /**
  * @brief Creates a parser that matches a specific string literal and adds it to the list.
@@ -225,7 +224,8 @@ EASY_PC_API epc_parser_t * epc_string(char const * name, const char * s);
  * @param s The string literal to match. The lifetime of `s` must exceed the parser's.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_string_l(epc_parser_list * list, char const * name, const char * s)
+static inline epc_parser_t *
+epc_string_l(epc_parser_list * list, char const * name, char const * s)
 {
     return epc_parser_list_add(list, epc_string(name, s));
 }
@@ -245,7 +245,8 @@ EASY_PC_API epc_parser_t * epc_digit(char const * name);
  * @param name The name of the parser for debugging/CPT.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_digit_l(epc_parser_list * list, char const * name)
+static inline epc_parser_t *
+epc_digit_l(epc_parser_list * list, char const * name)
 {
     return epc_parser_list_add(list, epc_digit(name));
 }
@@ -265,7 +266,8 @@ EASY_PC_API epc_parser_t * epc_alpha(char const * name);
  * @param name The name of the parser for debugging/CPT.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_alpha_l(epc_parser_list * list, char const * name)
+static inline epc_parser_t *
+epc_alpha_l(epc_parser_list * list, char const * name)
 {
     return epc_parser_list_add(list, epc_alpha(name));
 }
@@ -285,7 +287,8 @@ EASY_PC_API epc_parser_t * epc_alphanum(char const * name);
  * @param name The name of the parser for debugging/CPT.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_alphanum_l(epc_parser_list * list, char const * name)
+static inline epc_parser_t *
+epc_alphanum_l(epc_parser_list * list, char const * name)
 {
     return epc_parser_list_add(list, epc_alphanum(name));
 }
@@ -305,7 +308,8 @@ EASY_PC_API epc_parser_t * epc_int(char const * name);
  * @param name The name of the parser for debugging/CPT.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_int_l(epc_parser_list * list, char const * name)
+static inline epc_parser_t *
+epc_int_l(epc_parser_list * list, char const * name)
 {
     return epc_parser_list_add(list, epc_int(name));
 }
@@ -325,7 +329,8 @@ EASY_PC_API epc_parser_t * epc_double(char const * name);
  * @param name The name of the parser for debugging/CPT.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_double_l(epc_parser_list * list, char const * name)
+static inline epc_parser_t *
+epc_double_l(epc_parser_list * list, char const * name)
 {
     return epc_parser_list_add(list, epc_double(name));
 }
@@ -345,7 +350,8 @@ EASY_PC_API epc_parser_t * epc_space(char const * name);
  * @param name The name of the parser for debugging/CPT.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_space_l(epc_parser_list * list, char const * name)
+static inline epc_parser_t *
+epc_space_l(epc_parser_list * list, char const * name)
 {
     return epc_parser_list_add(list, epc_space(name));
 }
@@ -355,19 +361,20 @@ static inline epc_parser_t * epc_space_l(epc_parser_list * list, char const * na
  * @param name The name of the parser for debugging/CPT.
  * @return A new `parser_t` instance, or NULL on error.
  */
-EASY_PC_API epc_parser_t * epc_any_char(char const * name);
+EASY_PC_API epc_parser_t * epc_any(char const * name);
 
 /**
  * @brief Creates a parser that matches any single character and adds it to the list.
- *        This is a convenience wrapper for `epc_any_char()` that automatically adds the created
+ *        This is a convenience wrapper for `epc_any()` that automatically adds the created
  *        parser to the provided `epc_parser_list`.
  * @param list The parser list to add to.
  * @param name The name of the parser for debugging/CPT.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_any_char_l(epc_parser_list * list, char const * name)
+static inline epc_parser_t *
+epc_any_l(epc_parser_list * list, char const * name)
 {
-    return epc_parser_list_add(list, epc_any_char(name));
+    return epc_parser_list_add(list, epc_any(name));
 }
 
 /**
@@ -391,7 +398,8 @@ EASY_PC_API epc_parser_t * epc_succeed(char const * name);
  * @param name The name of the parser for debugging/CPT.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_succeed_l(epc_parser_list * list, char const * name)
+static inline epc_parser_t *
+epc_succeed_l(epc_parser_list * list, char const * name)
 {
     return epc_parser_list_add(list, epc_succeed(name));
 }
@@ -411,7 +419,8 @@ EASY_PC_API epc_parser_t * epc_hex_digit(char const * name);
  * @param name The name of the parser for debugging/CPT.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_hex_digit_l(epc_parser_list * list, char const * name)
+static inline epc_parser_t *
+epc_hex_digit_l(epc_parser_list * list, char const * name)
 {
     return epc_parser_list_add(list, epc_hex_digit(name));
 }
@@ -436,7 +445,8 @@ EASY_PC_API epc_parser_t * epc_char_range(char const * name, char char_start, ch
  * @param char_end The ending character of the range (inclusive).
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_char_range_l(epc_parser_list * list, char const * name, char char_start, char char_end)
+static inline epc_parser_t *
+epc_char_range_l(epc_parser_list * list, char const * name, char char_start, char char_end)
 {
     return epc_parser_list_add(list, epc_char_range(name, char_start, char_end));
 }
@@ -448,7 +458,7 @@ static inline epc_parser_t * epc_char_range_l(epc_parser_list * list, char const
  *                       The lifetime of this string must exceed the parser's.
  * @return A new `parser_t` instance, or NULL on error.
  */
-EASY_PC_API epc_parser_t * epc_none_of(char const * name, const char * chars_to_avoid);
+EASY_PC_API epc_parser_t * epc_none_of(char const * name, char const * chars_to_avoid);
 
 /**
  * @brief Creates a parser that matches any single character NOT in the provided set and adds it to the list.
@@ -460,7 +470,8 @@ EASY_PC_API epc_parser_t * epc_none_of(char const * name, const char * chars_to_
  *                       The lifetime of this string must exceed the parser's.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_none_of_l(epc_parser_list * list, char const * name, const char * chars_to_avoid)
+static inline epc_parser_t *
+epc_none_of_l(epc_parser_list * list, char const * name, char const * chars_to_avoid)
 {
     return epc_parser_list_add(list, epc_none_of(name, chars_to_avoid));
 }
@@ -488,7 +499,8 @@ EASY_PC_API epc_parser_t * epc_many(char const * name, epc_parser_t * p);
  * @param p The child parser to repeat.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_many_l(epc_parser_list * list, char const * name, epc_parser_t * p)
+static inline epc_parser_t *
+epc_many_l(epc_parser_list * list, char const * name, epc_parser_t * p)
 {
     return epc_parser_list_add(list, epc_many(name, p));
 }
@@ -516,7 +528,8 @@ EASY_PC_API epc_parser_t * epc_count(char const * name, int num, epc_parser_t * 
  * @param p The child parser to repeat.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_count_l(epc_parser_list * list, char const * name, int num, epc_parser_t * p)
+static inline epc_parser_t *
+epc_count_l(epc_parser_list * list, char const * name, int num, epc_parser_t * p)
 {
     return epc_parser_list_add(list, epc_count(name, num, p));
 }
@@ -548,13 +561,15 @@ EASY_PC_API epc_parser_t * epc_between(char const * name, epc_parser_t * open, e
  * @param close The parser for the closing delimiter.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_between_l(epc_parser_list * list, char const * name, epc_parser_t * open, epc_parser_t * p, epc_parser_t * close)
+static inline epc_parser_t *
+epc_between_l(epc_parser_list * list, char const * name, epc_parser_t * open, epc_parser_t * p, epc_parser_t * close)
 {
     return epc_parser_list_add(list, epc_between(name, open, p, close));
 }
 
 /**
- * @brief Creates a parser that matches one or more `item` parsers, optionally separated by a `delimiter` and adds it to the list.
+ * @brief Creates a parser that matches one or more `item` parsers, optionally separated by a `delimiter` and adds it to
+ * the list.
  *
  * It requires at least one `item` to match. If a `delimiter_parser` is provided,
  * it attempts to match it between items.
@@ -563,12 +578,13 @@ static inline epc_parser_t * epc_between_l(epc_parser_list * list, char const * 
  * @param delimiter_parser An optional parser for the delimiter between items. Can be NULL.
  * @return A new `parser_t` instance, or NULL on error.
  */
-EASY_PC_API epc_parser_t * epc_delimited(char const * name, epc_parser_t * item_parser, epc_parser_t * delimiter_parser);
+EASY_PC_API epc_parser_t *
+epc_delimited(char const * name, epc_parser_t * item_parser, epc_parser_t * delimiter_parser);
 
 /**
- * @brief Creates a parser that matches one or more `item` parsers, optionally separated by a `delimiter` and adds it to the list.
- *        This is a convenience wrapper for `epc_delimited()` that automatically adds the created
- *        parser to the provided `epc_parser_list`.
+ * @brief Creates a parser that matches one or more `item` parsers, optionally separated by a `delimiter` and adds it to
+ * the list. This is a convenience wrapper for `epc_delimited()` that automatically adds the created parser to the
+ * provided `epc_parser_list`.
  *
  * It requires at least one `item` to match. If a `delimiter_parser` is provided,
  * it attempts to match it between items.
@@ -578,7 +594,8 @@ EASY_PC_API epc_parser_t * epc_delimited(char const * name, epc_parser_t * item_
  * @param delimiter_parser An optional parser for the delimiter between items. Can be NULL.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_delimited_l(epc_parser_list * list, char const * name, epc_parser_t * item_parser, epc_parser_t * delimiter_parser)
+static inline epc_parser_t *
+epc_delimited_l(epc_parser_list * list, char const * name, epc_parser_t * item_parser, epc_parser_t * delimiter_parser)
 {
     return epc_parser_list_add(list, epc_delimited(name, item_parser, delimiter_parser));
 }
@@ -606,7 +623,8 @@ EASY_PC_API epc_parser_t * epc_optional(char const * name, epc_parser_t * p);
  * @param p The child parser to make optional.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_optional_l(epc_parser_list * list, char const * name, epc_parser_t * p)
+static inline epc_parser_t *
+epc_optional_l(epc_parser_list * list, char const * name, epc_parser_t * p)
 {
     return epc_parser_list_add(list, epc_optional(name, p));
 }
@@ -636,7 +654,8 @@ EASY_PC_API epc_parser_t * epc_lookahead(char const * name, epc_parser_t * p);
  * @param p The child parser to look ahead for.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_lookahead_l(epc_parser_list * list, char const * name, epc_parser_t * p)
+static inline epc_parser_t *
+epc_lookahead_l(epc_parser_list * list, char const * name, epc_parser_t * p)
 {
     return epc_parser_list_add(list, epc_lookahead(name, p));
 }
@@ -662,7 +681,8 @@ EASY_PC_API epc_parser_t * epc_not(char const * name, epc_parser_t * p);
  * @param p The child parser to check for non-matching.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_not_l(epc_parser_list * list, char const * name, epc_parser_t * p)
+static inline epc_parser_t *
+epc_not_l(epc_parser_list * list, char const * name, epc_parser_t * p)
 {
     return epc_parser_list_add(list, epc_not(name, p));
 }
@@ -675,7 +695,7 @@ static inline epc_parser_t * epc_not_l(epc_parser_list * list, char const * name
  * @param message The error message to report when this parser fails.
  * @return A new `parser_t` instance, or NULL on error.
  */
-EASY_PC_API epc_parser_t * epc_fail(char const * name, const char * message);
+EASY_PC_API epc_parser_t * epc_fail(char const * name, char const * message);
 
 /**
  * @brief Creates a parser that always fails with a specified error message and adds it to the list.
@@ -688,7 +708,8 @@ EASY_PC_API epc_parser_t * epc_fail(char const * name, const char * message);
  * @param message The error message to report when this parser fails.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_fail_l(epc_parser_list * list, char const * name, const char * message)
+static inline epc_parser_t *
+epc_fail_l(epc_parser_list * list, char const * name, char const * message)
 {
     return epc_parser_list_add(list, epc_fail(name, message));
 }
@@ -699,7 +720,7 @@ static inline epc_parser_t * epc_fail_l(epc_parser_list * list, char const * nam
  * @param chars_to_match A null-terminated string of characters that are allowed to match.
  * @return A new `parser_t` instance, or NULL on error.
  */
-EASY_PC_API epc_parser_t * epc_one_of(char const * name, const char * chars_to_match);
+EASY_PC_API epc_parser_t * epc_one_of(char const * name, char const * chars_to_match);
 
 /**
  * @brief Creates a parser that matches any single character from a specified set and adds it to the list.
@@ -710,7 +731,8 @@ EASY_PC_API epc_parser_t * epc_one_of(char const * name, const char * chars_to_m
  * @param chars_to_match A null-terminated string of characters that are allowed to match.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_one_of_l(epc_parser_list * list, char const * name, const char * chars_to_match)
+static inline epc_parser_t *
+epc_one_of_l(epc_parser_list * list, char const * name, char const * chars_to_match)
 {
     return epc_parser_list_add(list, epc_one_of(name, chars_to_match));
 }
@@ -734,7 +756,8 @@ EASY_PC_API epc_parser_t * epc_lexeme(char const * name, epc_parser_t * p);
  * @param p The child parser to wrap.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_lexeme_l(epc_parser_list * list, char const * name, epc_parser_t * p)
+static inline epc_parser_t *
+epc_lexeme_l(epc_parser_list * list, char const * name, epc_parser_t * p)
 {
     return epc_parser_list_add(list, epc_lexeme(name, p));
 }
@@ -762,7 +785,8 @@ EASY_PC_API epc_parser_t * epc_chainl1(char const * name, epc_parser_t * item, e
  * @param op The parser for the operator.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_chainl1_l(epc_parser_list * list, char const * name, epc_parser_t * item, epc_parser_t * op)
+static inline epc_parser_t *
+epc_chainl1_l(epc_parser_list * list, char const * name, epc_parser_t * item, epc_parser_t * op)
 {
     return epc_parser_list_add(list, epc_chainl1(name, item, op));
 }
@@ -790,7 +814,8 @@ EASY_PC_API epc_parser_t * epc_chainr1(char const * name, epc_parser_t * item, e
  * @param op The parser for the operator.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_chainr1_l(epc_parser_list * list, char const * name, epc_parser_t * item, epc_parser_t * op)
+static inline epc_parser_t *
+epc_chainr1_l(epc_parser_list * list, char const * name, epc_parser_t * item, epc_parser_t * op)
 {
     return epc_parser_list_add(list, epc_chainr1(name, item, op));
 }
@@ -855,9 +880,9 @@ EASY_PC_API epc_parser_t * epc_and(char const * name, int count, ...);
  */
 EASY_PC_API epc_parser_t * epc_and_l(epc_parser_list * list, char const * name, int count, ...);
 
-
 /**
- * @brief Creates a parser that attempts to match `parser_to_skip` zero or more times, discarding its results and adds it to the list.
+ * @brief Creates a parser that attempts to match `parser_to_skip` zero or more times, discarding its results and adds
+ * it to the list.
  *
  * This is similar to `p_many`, but it explicitly discards the CPT nodes generated
  * by `parser_to_skip`. It always succeeds, consuming as much input as `parser_to_skip`
@@ -869,9 +894,9 @@ EASY_PC_API epc_parser_t * epc_and_l(epc_parser_list * list, char const * name, 
 EASY_PC_API epc_parser_t * epc_skip(char const * name, epc_parser_t * parser_to_skip);
 
 /**
- * @brief Creates a parser that attempts to match `parser_to_skip` zero or more times, discarding its results and adds it to the list.
- *        This is a convenience wrapper for `epc_skip()` that automatically adds the created
- *        parser to the provided `epc_parser_list`.
+ * @brief Creates a parser that attempts to match `parser_to_skip` zero or more times, discarding its results and adds
+ * it to the list. This is a convenience wrapper for `epc_skip()` that automatically adds the created parser to the
+ * provided `epc_parser_list`.
  *
  * This is similar to `p_many`, but it explicitly discards the CPT nodes generated
  * by `parser_to_skip`. It always succeeds, consuming as much input as `parser_to_skip`
@@ -881,7 +906,8 @@ EASY_PC_API epc_parser_t * epc_skip(char const * name, epc_parser_t * parser_to_
  * @param parser_to_skip The parser whose matches should be skipped.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_skip_l(epc_parser_list * list, char const * name, epc_parser_t * parser_to_skip)
+static inline epc_parser_t *
+epc_skip_l(epc_parser_list * list, char const * name, epc_parser_t * parser_to_skip)
 {
     return epc_parser_list_add(list, epc_skip(name, parser_to_skip));
 }
@@ -907,7 +933,8 @@ EASY_PC_API epc_parser_t * epc_plus(char const * name, epc_parser_t * parser_to_
  * @param parser_to_repeat The child parser to repeat.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_plus_l(epc_parser_list * list, char const * name, epc_parser_t * parser_to_repeat)
+static inline epc_parser_t *
+epc_plus_l(epc_parser_list * list, char const * name, epc_parser_t * parser_to_repeat)
 {
     return epc_parser_list_add(list, epc_plus(name, parser_to_repeat));
 }
@@ -931,7 +958,8 @@ EASY_PC_API epc_parser_t * epc_eoi(char const * name);
  * @param name The name of the parser for debugging/CPT.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_eoi_l(epc_parser_list * list, char const * name)
+static inline epc_parser_t *
+epc_eoi_l(epc_parser_list * list, char const * name)
 {
     return epc_parser_list_add(list, epc_eoi(name));
 }
@@ -951,7 +979,8 @@ EASY_PC_API epc_parser_t * epc_cpp_comment(char const * name);
  * @param name The name of the parser for debugging/CPT.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_cpp_comment_l(epc_parser_list * list, char const * name)
+static inline epc_parser_t *
+epc_cpp_comment_l(epc_parser_list * list, char const * name)
 {
     return epc_parser_list_add(list, epc_cpp_comment(name));
 }
@@ -971,7 +1000,8 @@ EASY_PC_API epc_parser_t * epc_bash_comment(char const * name);
  * @param name The name of the parser for debugging/CPT.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_bash_comment_l(epc_parser_list * list, char const * name)
+static inline epc_parser_t *
+epc_bash_comment_l(epc_parser_list * list, char const * name)
 {
     return epc_parser_list_add(list, epc_bash_comment(name));
 }
@@ -991,7 +1021,8 @@ EASY_PC_API epc_parser_t * epc_c_comment(char const * name);
  * @param name The name of the parser for debugging/CPT.
  * @return A new `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_c_comment_l(epc_parser_list * list, char const * name)
+static inline epc_parser_t *
+epc_c_comment_l(epc_parser_list * list, char const * name)
 {
     return epc_parser_list_add(list, epc_c_comment(name));
 }
@@ -1009,8 +1040,7 @@ static inline epc_parser_t * epc_c_comment_l(epc_parser_list * list, char const 
  * @return A pointer to the newly allocated and initialized `parser_t` instance, or NULL on error.
  */
 ATTR_NONNULL(1)
-EASY_PC_API epc_parser_t *
-epc_parser_allocate(char const * name);
+EASY_PC_API epc_parser_t * epc_parser_allocate(char const * name);
 
 /**
  * @brief Allocates and initializes a new parser object within the grammar's memory context.
@@ -1027,7 +1057,8 @@ epc_parser_allocate(char const * name);
  * @param name A string name for the parser, primarily for debugging and CPT visualization.
  * @return A pointer to the newly allocated and initialized `parser_t` instance, or NULL on error.
  */
-static inline epc_parser_t * epc_parser_allocate_l(epc_parser_list * list, char const * name)
+static inline epc_parser_t *
+epc_parser_allocate_l(epc_parser_list * list, char const * name)
 {
     return epc_parser_list_add(list, epc_parser_allocate(name));
 }
@@ -1071,8 +1102,7 @@ EASY_PC_API void epc_parser_set_ast_action(epc_parser_t * p, int action_type);
  *         context for cleanup.
  *         This session MUST be destroyed with `easy_pc_parse_session_destroy`.
  */
-EASY_PC_API epc_parse_session_t
-epc_parse_input(epc_parser_t * top_parser, const char * input);
+EASY_PC_API epc_parse_session_t epc_parse_input(epc_parser_t * top_parser, char const * input);
 
 /**
  * @brief Destroys an `easy_pc_parse_session_t` and frees all associated resources.
@@ -1095,8 +1125,7 @@ EASY_PC_API void epc_parse_session_destroy(epc_parse_session_t * session);
  * @param node A pointer to the `epc_cpt_node_t`.
  * @return A `const char*` pointer to the semantic content.
  */
-EASY_PC_API const char *
-epc_cpt_node_get_semantic_content(epc_cpt_node_t * node);
+EASY_PC_API const char * epc_cpt_node_get_semantic_content(epc_cpt_node_t * node);
 
 /**
  * @brief Retrieves the length of the semantically relevant content from a CPT node.
@@ -1108,8 +1137,7 @@ epc_cpt_node_get_semantic_content(epc_cpt_node_t * node);
  * @param node A pointer to the `epc_cpt_node_t`.
  * @return A `size_t` representing the length of the semantic content.
  */
-EASY_PC_API size_t
-epc_cpt_node_get_semantic_len(epc_cpt_node_t * node);
+EASY_PC_API size_t epc_cpt_node_get_semantic_len(epc_cpt_node_t * node);
 
 /**
  * @brief Retrieves the content from a CPT node.
@@ -1121,8 +1149,7 @@ epc_cpt_node_get_semantic_len(epc_cpt_node_t * node);
  * @param node A pointer to the `epc_cpt_node_t`.
  * @return A `const char*` pointer to the content.
  */
-EASY_PC_API const char *
-epc_cpt_node_get_content(epc_cpt_node_t * node);
+EASY_PC_API const char * epc_cpt_node_get_content(epc_cpt_node_t * node);
 
 /**
  * @brief Retrieves the length of the content from a CPT node.
@@ -1134,8 +1161,7 @@ epc_cpt_node_get_content(epc_cpt_node_t * node);
  * @param node A pointer to the `epc_cpt_node_t`.
  * @return A `size_t` representing the length of the content.
  */
-EASY_PC_API size_t
-epc_cpt_node_get_len(epc_cpt_node_t * node);
+EASY_PC_API size_t epc_cpt_node_get_len(epc_cpt_node_t * node);
 
 /**
  * @brief Prints a Concrete Parse Tree (CPT) to a dynamically allocated string.
@@ -1158,8 +1184,7 @@ EASY_PC_API char * epc_cpt_to_string(epc_cpt_node_t * node);
  *
  * @param count The number of parsers to follow in the pargument list.
  */
-void
-epc_parsers_free(size_t const count, ...);
+void epc_parsers_free(size_t const count, ...);
 
 #ifdef __cplusplus
 }

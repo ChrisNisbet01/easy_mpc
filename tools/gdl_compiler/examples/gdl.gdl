@@ -49,7 +49,7 @@ CharLiteral = lexeme(RawCharQuote CharLiteralContent RawCharQuote) @AST_ACTION_C
 
 // RawChar: single char (not structural or escaped) for char ranges
 RawCharEscapeSequenceContent = lexeme('\
-') any_char; // Backslash followed by any char
+') any; // Backslash followed by any char
 RawCharUnreserved = none_of("[]\;=,()"); // Chars that need escaping or are structural
 RawCharContentOption = RawCharEscapeSequenceContent | RawCharUnreserved;
 RawChar = lexeme(RawCharContentOption) @AST_ACTION_CREATE_RAW_CHAR_LITERAL;

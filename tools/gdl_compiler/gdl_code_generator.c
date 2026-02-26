@@ -1,16 +1,17 @@
 #include "gdl_code_generator.h"
+
+#include <ctype.h> // For isalnum, isdigit, etc.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h> // For isalnum, isdigit, etc.
 
 // Data structure to hold information about each rule for dependency analysis
 typedef struct gdl_rule_info_t
 {
-    char * name; // Name of the rule
+    char * name;                    // Name of the rule
     bool needs_forward_declaration; // True if it needs epc_parser_allocate_l
-    gdl_ast_node_t * ast_node; // Pointer to the actual rule definition AST node
-    struct gdl_rule_info_t * next; // For linked list
+    gdl_ast_node_t * ast_node;      // Pointer to the actual rule definition AST node
+    struct gdl_rule_info_t * next;  // For linked list
 } gdl_rule_info_t;
 
 // List to manage all rules
@@ -20,12 +21,11 @@ typedef struct
     gdl_rule_info_t * tail;
 } gdl_rule_list_t;
 
-
 // --- Helper Functions for C Code Generation ---
 
 // Function to convert a string to PascalCase (for rule names in C)
 static char *
-to_pascal_case(const char * str)
+to_pascal_case(char const * str)
 {
     if (str == NULL || *str == '\0')
     {
@@ -70,7 +70,7 @@ to_pascal_case(const char * str)
 
 // Function to convert a string to uppercase with underscores, handling existing underscores gracefully
 static char *
-to_upper_case(const char * str)
+to_upper_case(char const * str)
 {
     if (str == NULL || *str == '\0')
     {
@@ -94,16 +94,17 @@ to_upper_case(const char * str)
     return upper_case_str;
 }
 
-
 // Forward declarations for rule generation
-static bool generate_rule_definition_code(FILE * source_file, gdl_ast_node_t * rule_node, int indent_level, const gdl_rule_list_t * rule_list);
+static bool generate_rule_definition_code(
+    FILE * source_file, gdl_ast_node_t * rule_node, int indent_level, gdl_rule_list_t const * rule_list
+);
 
 // --- Semantic Actions Header Generation ---
 
 // Helper to collect unique semantic action names
 
 static void
-add_unique_action_name(semantic_action_node_t ** head, const char * name)
+add_unique_action_name(semantic_action_node_t ** head, char const * name)
 {
     if (name == NULL || *name == '\0')
         return;
@@ -163,7 +164,9 @@ gdl_collect_semantic_actions(gdl_ast_node_t * ast_root)
             if (rule_def->data.rule_def.semantic_action != NULL &&
                 rule_def->data.rule_def.semantic_action->data.semantic_action.action_name != NULL)
             {
-                add_unique_action_name(&action_names_head, rule_def->data.rule_def.semantic_action->data.semantic_action.action_name);
+                add_unique_action_name(
+                    &action_names_head, rule_def->data.rule_def.semantic_action->data.semantic_action.action_name
+                );
             }
         }
         current_rule_node = current_rule_node->next;
@@ -172,7 +175,7 @@ gdl_collect_semantic_actions(gdl_ast_node_t * ast_root)
 }
 
 static bool
-gdl_generate_semantic_actions_header(gdl_ast_node_t * ast_root, const char * base_name, const char * output_dir)
+gdl_generate_semantic_actions_header(gdl_ast_node_t * ast_root, char const * base_name, char const * output_dir)
 {
     char actions_header_filepath[512];
     snprintf(actions_header_filepath, sizeof(actions_header_filepath), "%s/%s_actions.h", output_dir, base_name);
@@ -222,7 +225,6 @@ gdl_generate_semantic_actions_header(gdl_ast_node_t * ast_root, const char * bas
     fprintf(actions_header_file, "    %s_AST_ACTION_COUNT__,\n", action_count_prefix);
     free(action_count_prefix);
 
-
     fprintf(actions_header_file, "} %s_semantic_action_t;\n", base_name);
     fclose(actions_header_file);
     fprintf(stdout, "Generated: %s\n", actions_header_filepath);
@@ -231,14 +233,13 @@ gdl_generate_semantic_actions_header(gdl_ast_node_t * ast_root, const char * bas
     return true;
 }
 
-static bool
-generate_expression_code(
+static bool generate_expression_code(
     FILE * source_file,
     gdl_ast_node_t * expression_node,
     int indent_level,
-    const gdl_rule_list_t * rule_list,
-    const char * expression_name
-    );
+    gdl_rule_list_t const * rule_list,
+    char const * expression_name
+);
 
 // --- Rule List Management (for dependency analysis) ---
 
@@ -250,7 +251,7 @@ gdl_rule_list_init(gdl_rule_list_t * list)
 }
 
 static void
-gdl_rule_list_add(gdl_rule_list_t * list, const char * rule_name, gdl_ast_node_t * ast_node)
+gdl_rule_list_add(gdl_rule_list_t * list, char const * rule_name, gdl_ast_node_t * ast_node)
 {
     gdl_rule_info_t * new_node = (gdl_rule_info_t *)calloc(1, sizeof(*new_node));
     if (new_node == NULL)
@@ -276,7 +277,7 @@ gdl_rule_list_add(gdl_rule_list_t * list, const char * rule_name, gdl_ast_node_t
 }
 
 static gdl_rule_info_t *
-gdl_rule_list_find(gdl_rule_list_t * list, const char * rule_name)
+gdl_rule_list_find(gdl_rule_list_t * list, char const * rule_name)
 {
     gdl_rule_info_t * current = list->head;
     while (current != NULL)
@@ -305,10 +306,11 @@ gdl_rule_list_free(gdl_rule_list_t * list)
     list->tail = NULL;
 }
 
-
 // Helper for gdl_analyze_rule_dependencies to traverse rule definitions
 static void
-traverse_expression_for_references(gdl_ast_node_t * expression_node, const gdl_rule_info_t * current_rule_info, gdl_rule_list_t * all_rules)
+traverse_expression_for_references(
+    gdl_ast_node_t * expression_node, gdl_rule_info_t const * current_rule_info, gdl_rule_list_t * all_rules
+)
 {
     if (expression_node == NULL)
     {
@@ -373,7 +375,9 @@ traverse_expression_for_references(gdl_ast_node_t * expression_node, const gdl_r
     }
     case GDL_AST_NODE_TYPE_REPETITION_EXPRESSION:
     {
-        traverse_expression_for_references(expression_node->data.repetition_expr.expression, current_rule_info, all_rules);
+        traverse_expression_for_references(
+            expression_node->data.repetition_expr.expression, current_rule_info, all_rules
+        );
         break;
     }
     case GDL_AST_NODE_TYPE_OPTIONAL_EXPRESSION:
@@ -410,15 +414,14 @@ traverse_expression_for_references(gdl_ast_node_t * expression_node, const gdl_r
     case GDL_AST_NODE_TYPE_COMBINATOR_CHAINL1:
     case GDL_AST_NODE_TYPE_COMBINATOR_CHAINR1:
     case GDL_AST_NODE_TYPE_FAIL_CALL:
-    case GDL_AST_NODE_TYPE_PROGRAM: // Should not happen here
+    case GDL_AST_NODE_TYPE_PROGRAM:         // Should not happen here
     case GDL_AST_NODE_TYPE_RULE_DEFINITION: // Should not happen here
-    case GDL_AST_NODE_TYPE_ARGUMENT_LIST: // Should be handled by FUNCTION_CALL
+    case GDL_AST_NODE_TYPE_ARGUMENT_LIST:   // Should be handled by FUNCTION_CALL
     case GDL_AST_NODE_TYPE_PLACEHOLDER:
         // These nodes do not contain further rule references in this context
         break;
     }
 }
-
 
 static bool
 gdl_analyze_rule_dependencies(gdl_ast_node_t * ast_root, gdl_rule_list_t * rule_list)
@@ -457,7 +460,8 @@ gdl_analyze_rule_dependencies(gdl_ast_node_t * ast_root, gdl_rule_list_t * rule_
 
 // --- Main Code Generation Logic ---
 
-bool gdl_generate_c_code(gdl_ast_node_t * ast_root, const char * base_name, const char * output_dir)
+bool
+gdl_generate_c_code(gdl_ast_node_t * ast_root, char const * base_name, char const * output_dir)
 {
     if (ast_root == NULL || ast_root->type != GDL_AST_NODE_TYPE_PROGRAM || base_name == NULL || output_dir == NULL)
     {
@@ -490,7 +494,6 @@ bool gdl_generate_c_code(gdl_ast_node_t * ast_root, const char * base_name, cons
         success = false;
     }
 
-
     // --- Generate Parser Header ---
     FILE * header_file = fopen(header_filepath, "w");
     if (header_file == NULL)
@@ -518,7 +521,7 @@ bool gdl_generate_c_code(gdl_ast_node_t * ast_root, const char * base_name, cons
     fprintf(source_file, "#include \"%s_actions.h\"\n", base_name); // Include actions header
     fprintf(source_file, "#include <easy_pc/easy_pc.h>\n");
     fprintf(source_file, "#include <stddef.h>\n"); // For NULL, size_t, etc.
-    fprintf(source_file, "#include <stdio.h>\n"); // For debugging, if needed
+    fprintf(source_file, "#include <stdio.h>\n");  // For debugging, if needed
     fprintf(source_file, "\n");
 
     fprintf(source_file, "epc_parser_t * create_%s_parser(epc_parser_list * list)\n", base_name);
@@ -527,7 +530,9 @@ bool gdl_generate_c_code(gdl_ast_node_t * ast_root, const char * base_name, cons
     // Validate list argument
     fprintf(source_file, "    if (list == NULL)\n");
     fprintf(source_file, "    {\n");
-    fprintf(source_file, "        fprintf(stderr, \"Error: Parser list is NULL in create_%s_parser.\\n\");\n", base_name);
+    fprintf(
+        source_file, "        fprintf(stderr, \"Error: Parser list is NULL in create_%s_parser.\\n\");\n", base_name
+    );
     fprintf(source_file, "        return NULL;\n");
     fprintf(source_file, "    }\n\n");
 
@@ -543,7 +548,12 @@ bool gdl_generate_c_code(gdl_ast_node_t * ast_root, const char * base_name, cons
         if (current_rule_info->needs_forward_declaration)
         {
             char * pascal_rule_name = to_pascal_case(current_rule_info->name);
-            fprintf(source_file, "    epc_parser_t * %s = epc_parser_allocate_l(list, \"%s\");\n", pascal_rule_name, current_rule_info->name);
+            fprintf(
+                source_file,
+                "    epc_parser_t * %s = epc_parser_allocate_l(list, \"%s\");\n",
+                pascal_rule_name,
+                current_rule_info->name
+            );
             free(pascal_rule_name);
         }
         current_rule_info = current_rule_info->next;
@@ -579,7 +589,9 @@ bool gdl_generate_c_code(gdl_ast_node_t * ast_root, const char * base_name, cons
 
 // --- Rule Definition Code Generation ---
 static bool
-generate_rule_definition_code(FILE * source_file, gdl_ast_node_t * rule_node, int indent_level, const gdl_rule_list_t * rule_list)
+generate_rule_definition_code(
+    FILE * source_file, gdl_ast_node_t * rule_node, int indent_level, gdl_rule_list_t const * rule_list
+)
 {
     if (rule_node == NULL || rule_node->type != GDL_AST_NODE_TYPE_RULE_DEFINITION)
     {
@@ -590,7 +602,8 @@ generate_rule_definition_code(FILE * source_file, gdl_ast_node_t * rule_node, in
     char * pascal_rule_name = to_pascal_case(rule_node->data.rule_def.name);
     fprintf(source_file, "%*s// Rule: %s\n", indent_level * 4, "", rule_node->data.rule_def.name);
 
-    gdl_rule_info_t * current_rule_info = gdl_rule_list_find((gdl_rule_list_t *)rule_list, rule_node->data.rule_def.name);
+    gdl_rule_info_t * current_rule_info =
+        gdl_rule_list_find((gdl_rule_list_t *)rule_list, rule_node->data.rule_def.name);
     if (current_rule_info == NULL)
     {
         fprintf(stderr, "Error: Rule '%s' not found in dependency list.\n", rule_node->data.rule_def.name);
@@ -602,7 +615,9 @@ generate_rule_definition_code(FILE * source_file, gdl_ast_node_t * rule_node, in
     {
         // If no forward declaration was needed, define it directly (epc_parser_t * RuleName = ...)
         fprintf(source_file, "%*sepc_parser_t * %s = ", indent_level * 4, "", pascal_rule_name);
-        if (!generate_expression_code(source_file, rule_node->data.rule_def.definition, indent_level, rule_list, pascal_rule_name))
+        if (!generate_expression_code(
+                source_file, rule_node->data.rule_def.definition, indent_level, rule_list, pascal_rule_name
+            ))
         {
             free(pascal_rule_name);
             return false;
@@ -610,10 +625,19 @@ generate_rule_definition_code(FILE * source_file, gdl_ast_node_t * rule_node, in
         fprintf(source_file, ";\n");
 
         // Apply semantic action if present
-        if (rule_node->data.rule_def.semantic_action != NULL && rule_node->data.rule_def.semantic_action->data.semantic_action.action_name != NULL)
+        if (rule_node->data.rule_def.semantic_action != NULL &&
+            rule_node->data.rule_def.semantic_action->data.semantic_action.action_name != NULL)
         {
-            char * upper_case_action = to_upper_case(rule_node->data.rule_def.semantic_action->data.semantic_action.action_name);
-            fprintf(source_file, "%*sepc_parser_set_ast_action(%s, %s);\n", indent_level * 4, "", pascal_rule_name, upper_case_action);
+            char * upper_case_action =
+                to_upper_case(rule_node->data.rule_def.semantic_action->data.semantic_action.action_name);
+            fprintf(
+                source_file,
+                "%*sepc_parser_set_ast_action(%s, %s);\n",
+                indent_level * 4,
+                "",
+                pascal_rule_name,
+                upper_case_action
+            );
             free(upper_case_action);
         }
     }
@@ -623,7 +647,9 @@ generate_rule_definition_code(FILE * source_file, gdl_ast_node_t * rule_node, in
         fprintf(source_file, "%*sepc_parser_t * %s_def = ", indent_level * 4, "", pascal_rule_name);
 
         // Generate code for the definition part of the rule
-        if (!generate_expression_code(source_file, rule_node->data.rule_def.definition, indent_level, rule_list, pascal_rule_name))
+        if (!generate_expression_code(
+                source_file, rule_node->data.rule_def.definition, indent_level, rule_list, pascal_rule_name
+            ))
         {
             free(pascal_rule_name);
             return false;
@@ -631,15 +657,31 @@ generate_rule_definition_code(FILE * source_file, gdl_ast_node_t * rule_node, in
         fprintf(source_file, ";\n"); // End of definition assignment
 
         // Apply semantic action if present
-        if (rule_node->data.rule_def.semantic_action != NULL && rule_node->data.rule_def.semantic_action->data.semantic_action.action_name != NULL)
+        if (rule_node->data.rule_def.semantic_action != NULL &&
+            rule_node->data.rule_def.semantic_action->data.semantic_action.action_name != NULL)
         {
-            char * upper_case_action = to_upper_case(rule_node->data.rule_def.semantic_action->data.semantic_action.action_name);
-            fprintf(source_file, "%*sepc_parser_set_ast_action(%s_def, %s);\n", indent_level * 4, "", pascal_rule_name, upper_case_action);
+            char * upper_case_action =
+                to_upper_case(rule_node->data.rule_def.semantic_action->data.semantic_action.action_name);
+            fprintf(
+                source_file,
+                "%*sepc_parser_set_ast_action(%s_def, %s);\n",
+                indent_level * 4,
+                "",
+                pascal_rule_name,
+                upper_case_action
+            );
             free(upper_case_action);
         }
         // Be sure to assign the action _before_ duplicating the parser_list_duplicate so the forward
         // reference also gets the action assigned
-        fprintf(source_file, "%*sepc_parser_duplicate(%s, %s_def);\n", indent_level * 4, "", pascal_rule_name, pascal_rule_name);
+        fprintf(
+            source_file,
+            "%*sepc_parser_duplicate(%s, %s_def);\n",
+            indent_level * 4,
+            "",
+            pascal_rule_name,
+            pascal_rule_name
+        );
     }
 
     free(pascal_rule_name);
@@ -652,9 +694,9 @@ generate_expression_code(
     FILE * source_file,
     gdl_ast_node_t * expression_node,
     int indent_level,
-    const gdl_rule_list_t * rule_list,
-    const char * expression_name
-    )
+    gdl_rule_list_t const * rule_list,
+    char const * expression_name
+)
 {
     char const * dquote = "\"";
     char const * empty = "";
@@ -672,7 +714,6 @@ generate_expression_code(
         expr_name = expression_name;
     }
 
-
     if (expression_node == NULL)
     {
         return false;
@@ -681,12 +722,17 @@ generate_expression_code(
     switch (expression_node->type)
     {
     case GDL_AST_NODE_TYPE_COMBINATOR_COUNT:
-        fprintf(source_file,
-                "epc_count_l(list, %s%s%s, %llu, ",
-                q, expr_name, q,
-                expression_node->data.count_call.count_node->data.number_literal.value
+        fprintf(
+            source_file,
+            "epc_count_l(list, %s%s%s, %llu, ",
+            q,
+            expr_name,
+            q,
+            expression_node->data.count_call.count_node->data.number_literal.value
         );
-        if (!generate_expression_code(source_file, expression_node->data.count_call.expression, indent_level + 1, rule_list, NULL))
+        if (!generate_expression_code(
+                source_file, expression_node->data.count_call.expression, indent_level + 1, rule_list, NULL
+            ))
         {
             return false;
         }
@@ -695,7 +741,14 @@ generate_expression_code(
         break;
 
     case GDL_AST_NODE_TYPE_STRING_LITERAL:
-        fprintf(source_file, "epc_string_l(list, %s%s%s, \"%s\")", q, expr_name, q, expression_node->data.string_literal.value);
+        fprintf(
+            source_file,
+            "epc_string_l(list, %s%s%s, \"%s\")",
+            q,
+            expr_name,
+            q,
+            expression_node->data.string_literal.value
+        );
         break;
 
     case GDL_AST_NODE_TYPE_CHAR_LITERAL:
@@ -717,7 +770,7 @@ generate_expression_code(
 
     case GDL_AST_NODE_TYPE_KEYWORD: // Handle GDL keywords directly
     {
-        const char * keyword_name = expression_node->data.keyword.name;
+        char const * keyword_name = expression_node->data.keyword.name;
         // These are the keywords that map directly to epc_xxx_l functions
         if (strcmp(keyword_name, "eoi") == 0)
         {
@@ -739,9 +792,9 @@ generate_expression_code(
         {
             fprintf(source_file, "epc_space_l(list, \"%s\")", keyword_name);
         }
-        else if (strcmp(keyword_name, "any_char") == 0)
+        else if (strcmp(keyword_name, "any") == 0)
         {
-            fprintf(source_file, "epc_any_char_l(list, \"%s\")", keyword_name);
+            fprintf(source_file, "epc_any_l(list, \"%s\")", keyword_name);
         }
         else if (strcmp(keyword_name, "succeed") == 0)
         {
@@ -782,7 +835,7 @@ generate_expression_code(
 
     case GDL_AST_NODE_TYPE_FAIL_CALL:
     {
-        const char * fail_message = expression_node->data.string_literal.value;
+        char const * fail_message = expression_node->data.string_literal.value;
 
         fprintf(source_file, "epc_fail_l(list, \"%s\", \"%s\")", expr_name, fail_message);
 
@@ -791,7 +844,9 @@ generate_expression_code(
     case GDL_AST_NODE_TYPE_TERMINAL: // Handle generic terminal expressions
         // A TERMINAL node simply wraps another expression (string, char, keyword, identifier_ref)
         // Recurse into its wrapped expression.
-        if (!generate_expression_code(source_file, expression_node->data.terminal.expression, indent_level, rule_list, expression_name))
+        if (!generate_expression_code(
+                source_file, expression_node->data.terminal.expression, indent_level, rule_list, expression_name
+            ))
         {
             return false;
         }
@@ -806,7 +861,13 @@ generate_expression_code(
         else if (expression_node->data.sequence.elements.count == 1)
         {
             // Promote the single child directly
-            if (!generate_expression_code(source_file, expression_node->data.sequence.elements.head->item, indent_level, rule_list, expression_name))
+            if (!generate_expression_code(
+                    source_file,
+                    expression_node->data.sequence.elements.head->item,
+                    indent_level,
+                    rule_list,
+                    expression_name
+                ))
             {
                 return false;
             }
@@ -814,7 +875,14 @@ generate_expression_code(
         else
         {
             // Generate epc_and_l for multiple elements
-            fprintf(source_file, "epc_and_l(list, %s%s%s, %d", q, expr_name, q, expression_node->data.sequence.elements.count);
+            fprintf(
+                source_file,
+                "epc_and_l(list, %s%s%s, %d",
+                q,
+                expr_name,
+                q,
+                expression_node->data.sequence.elements.count
+            );
             gdl_ast_list_node_t * current_element = expression_node->data.sequence.elements.head;
             while (current_element != NULL)
             {
@@ -838,7 +906,13 @@ generate_expression_code(
         else if (expression_node->data.alternative.alternatives.count == 1)
         {
             // Promote the single child directly
-            if (!generate_expression_code(source_file, expression_node->data.alternative.alternatives.head->item, indent_level, rule_list, expression_name))
+            if (!generate_expression_code(
+                    source_file,
+                    expression_node->data.alternative.alternatives.head->item,
+                    indent_level,
+                    rule_list,
+                    expression_name
+                ))
             {
                 return false;
             }
@@ -846,7 +920,14 @@ generate_expression_code(
         else
         {
             // Generate epc_or_l for multiple alternatives
-            fprintf(source_file, "epc_or_l(list, %s%s%s, %d", q, expr_name, q, expression_node->data.alternative.alternatives.count);
+            fprintf(
+                source_file,
+                "epc_or_l(list, %s%s%s, %d",
+                q,
+                expr_name,
+                q,
+                expression_node->data.alternative.alternatives.count
+            );
             gdl_ast_list_node_t * current_alt = expression_node->data.alternative.alternatives.head;
             while (current_alt != NULL)
             {
@@ -880,7 +961,9 @@ generate_expression_code(
             fprintf(stderr, "Error: Unknown repetition operator '%c'.\n", operator_char);
             return false;
         }
-        if (!generate_expression_code(source_file, expression_node->data.repetition_expr.expression, indent_level + 1, rule_list, NULL))
+        if (!generate_expression_code(
+                source_file, expression_node->data.repetition_expr.expression, indent_level + 1, rule_list, NULL
+            ))
         {
             return false;
         }
@@ -891,7 +974,9 @@ generate_expression_code(
     case GDL_AST_NODE_TYPE_OPTIONAL_EXPRESSION:
         // This is for the 'optional()' combinator, not the '?' repetition operator
         fprintf(source_file, "epc_optional_l(list, %s%s%s, ", q, expr_name, q);
-        if (!generate_expression_code(source_file, expression_node->data.optional.expr, indent_level + 1, rule_list, NULL))
+        if (!generate_expression_code(
+                source_file, expression_node->data.optional.expr, indent_level + 1, rule_list, NULL
+            ))
         {
             return false;
         }
@@ -911,17 +996,23 @@ generate_expression_code(
 
     case GDL_AST_NODE_TYPE_COMBINATOR_BETWEEN: // GDL_AST_NODE_TYPE_COMBINATOR_BETWEEN
         fprintf(source_file, "epc_between_l(list, %s%s%s, ", q, expr_name, q);
-        if (!generate_expression_code(source_file, expression_node->data.between_call.open_expr, indent_level + 1, rule_list, NULL))
+        if (!generate_expression_code(
+                source_file, expression_node->data.between_call.open_expr, indent_level + 1, rule_list, NULL
+            ))
         {
             return false; // Open
         }
         fprintf(source_file, ", ");
-        if (!generate_expression_code(source_file, expression_node->data.between_call.content_expr, indent_level + 1, rule_list, NULL))
+        if (!generate_expression_code(
+                source_file, expression_node->data.between_call.content_expr, indent_level + 1, rule_list, NULL
+            ))
         {
             return false; // Content
         }
         fprintf(source_file, ", ");
-        if (!generate_expression_code(source_file, expression_node->data.between_call.close_expr, indent_level + 1, rule_list, NULL))
+        if (!generate_expression_code(
+                source_file, expression_node->data.between_call.close_expr, indent_level + 1, rule_list, NULL
+            ))
         {
             return false; // Close
         }
@@ -931,7 +1022,9 @@ generate_expression_code(
     case GDL_AST_NODE_TYPE_COMBINATOR_NOT:
     {
         fprintf(source_file, "epc_not_l(list, %s%s%s, ", q, expr_name, q);
-        if (!generate_expression_code(source_file, expression_node->data.unary_combinator_call.expr, indent_level + 1, rule_list, NULL))
+        if (!generate_expression_code(
+                source_file, expression_node->data.unary_combinator_call.expr, indent_level + 1, rule_list, NULL
+            ))
         {
             return false;
         }
@@ -942,7 +1035,9 @@ generate_expression_code(
     case GDL_AST_NODE_TYPE_COMBINATOR_LOOKAHEAD:
     {
         fprintf(source_file, "epc_lookahead_l(list, %s%s%s, ", q, expr_name, q);
-        if (!generate_expression_code(source_file, expression_node->data.unary_combinator_call.expr, indent_level + 1, rule_list, NULL))
+        if (!generate_expression_code(
+                source_file, expression_node->data.unary_combinator_call.expr, indent_level + 1, rule_list, NULL
+            ))
         {
             return false;
         }
@@ -953,7 +1048,9 @@ generate_expression_code(
     case GDL_AST_NODE_TYPE_COMBINATOR_SKIP:
     {
         fprintf(source_file, "epc_skip_l(list, %s%s%s, ", q, expr_name, q);
-        if (!generate_expression_code(source_file, expression_node->data.unary_combinator_call.expr, indent_level + 1, rule_list, NULL))
+        if (!generate_expression_code(
+                source_file, expression_node->data.unary_combinator_call.expr, indent_level + 1, rule_list, NULL
+            ))
         {
             return false;
         }
@@ -964,16 +1061,18 @@ generate_expression_code(
     case GDL_AST_NODE_TYPE_COMBINATOR_CHAINL1:
     case GDL_AST_NODE_TYPE_COMBINATOR_CHAINR1:
     {
-        char lr = (expression_node->type == GDL_AST_NODE_TYPE_COMBINATOR_CHAINL1)
-                  ? 'l'
-                  : 'r';
+        char lr = (expression_node->type == GDL_AST_NODE_TYPE_COMBINATOR_CHAINL1) ? 'l' : 'r';
         fprintf(source_file, "epc_chain%c1_l(list, %s%s%s, ", lr, q, expr_name, q);
-        if (!generate_expression_code(source_file, expression_node->data.chain_combinator_call.item_expr, indent_level + 1, rule_list, NULL))
+        if (!generate_expression_code(
+                source_file, expression_node->data.chain_combinator_call.item_expr, indent_level + 1, rule_list, NULL
+            ))
         {
             return false; // Item
         }
         fprintf(source_file, ", ");
-        if (!generate_expression_code(source_file, expression_node->data.chain_combinator_call.op_expr, indent_level + 1, rule_list, NULL))
+        if (!generate_expression_code(
+                source_file, expression_node->data.chain_combinator_call.op_expr, indent_level + 1, rule_list, NULL
+            ))
         {
             return false; // Operator
         }
@@ -983,12 +1082,16 @@ generate_expression_code(
 
     case GDL_AST_NODE_TYPE_COMBINATOR_DELIMITED:
         fprintf(source_file, "epc_delimited_l(list, %s%s%s, ", q, expr_name, q);
-        if (!generate_expression_code(source_file, expression_node->data.delimited_call.item_expr, indent_level + 1, rule_list, NULL))
+        if (!generate_expression_code(
+                source_file, expression_node->data.delimited_call.item_expr, indent_level + 1, rule_list, NULL
+            ))
         {
             return false; // Item
         }
         fprintf(source_file, ", ");
-        if (!generate_expression_code(source_file, expression_node->data.delimited_call.delimiter_expr, indent_level + 1, rule_list, NULL))
+        if (!generate_expression_code(
+                source_file, expression_node->data.delimited_call.delimiter_expr, indent_level + 1, rule_list, NULL
+            ))
         {
             return false; // Delimiter
         }
@@ -996,15 +1099,22 @@ generate_expression_code(
         break;
 
     case GDL_AST_NODE_TYPE_CHAR_RANGE:
-        fprintf(source_file, "epc_char_range_l(list, %s%s%s, '%c', '%c')",
-                q, expr_name, q,
-                expression_node->data.char_range.start_char,
-                expression_node->data.char_range.end_char);
+        fprintf(
+            source_file,
+            "epc_char_range_l(list, %s%s%s, '%c', '%c')",
+            q,
+            expr_name,
+            q,
+            expression_node->data.char_range.start_char,
+            expression_node->data.char_range.end_char
+        );
         break;
 
     case GDL_AST_NODE_TYPE_COMBINATOR_LEXEME:
         fprintf(source_file, "epc_lexeme_l(list, %s%s%s, ", q, expr_name, q);
-        if (!generate_expression_code(source_file, expression_node->data.unary_combinator_call.expr, indent_level + 1, rule_list, NULL))
+        if (!generate_expression_code(
+                source_file, expression_node->data.unary_combinator_call.expr, indent_level + 1, rule_list, NULL
+            ))
         {
             return false;
         }
@@ -1023,11 +1133,8 @@ generate_expression_code(
         }
 
         char const * parser_name =
-            (expression_node->type == GDL_AST_NODE_TYPE_COMBINATOR_NONEOF)
-                ? "none_of"
-                : "one_of";
-        fprintf(source_file, "epc_%s_l(list, %s%s%s, \"%s\")",
-                parser_name, q, expr_name, q, args_str);
+            (expression_node->type == GDL_AST_NODE_TYPE_COMBINATOR_NONEOF) ? "none_of" : "one_of";
+        fprintf(source_file, "epc_%s_l(list, %s%s%s, \"%s\")", parser_name, q, expr_name, q, args_str);
 
         break;
     }
@@ -1039,4 +1146,3 @@ generate_expression_code(
     }
     return true;
 }
-
