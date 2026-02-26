@@ -26,11 +26,13 @@ AlignAfterOpenBracket: BlockIndent
 BinPackParameters: false
 BinPackArguments: false
 AlwaysBreakAfterReturnType: AllDefinitions
+BreakBeforeClosingParen: Always
 
 # Whitespace
 SpaceAfterCStyleCast: false
 SpaceBeforeParens: ControlStatements
 SpacesInContainerLiterals: true
+BreakBeforeBinaryOperators: All
 
 AllowShortCaseLabelsOnASingleLine: false
 
