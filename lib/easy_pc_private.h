@@ -149,7 +149,7 @@ typedef enum parser_data_type_t
 
 typedef struct parser_data_type_st
 {
-    parser_data_type_t data_type;
+    parser_data_type_t type;
     union
     {
         epc_parser_t * parser;

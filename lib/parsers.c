@@ -72,7 +72,7 @@ string_set(char const ** const dst, char const * src)
 static void
 parser_data_free(parser_data_type_st * data)
 {
-    switch (data->data_type)
+    switch (data->type)
     {
     case PARSER_DATA_TYPE_NONE:
     case PARSER_DATA_TYPE_PARSER:
@@ -94,7 +94,7 @@ parser_data_free(parser_data_type_st * data)
         data->parser_list = NULL;
         break;
     }
-    data->data_type = PARSER_DATA_TYPE_NONE;
+    data->type = PARSER_DATA_TYPE_NONE;
 }
 
 void
@@ -431,7 +431,7 @@ epc_char(char const * name, char c)
         free(p);
         return NULL;
     }
-    p->data.data_type = PARSER_DATA_TYPE_STRING;
+    p->data.type = PARSER_DATA_TYPE_STRING;
     p->data.string = data;
     p->expected_value = p->data.string;
 
@@ -501,7 +501,7 @@ epc_string(char const * name, char const * s)
         free(p);
         return NULL;
     }
-    p->data.data_type = PARSER_DATA_TYPE_STRING;
+    p->data.type = PARSER_DATA_TYPE_STRING;
     p->data.string = data;
     p->expected_value = p->data.string;
 
@@ -985,7 +985,7 @@ vepc_or(char const * name, int count, va_list args)
         return NULL;
     }
     p->data.parser_list = parser_list_create_v(count, args);
-    p->data.data_type = PARSER_DATA_TYPE_PARSER_LIST;
+    p->data.type = PARSER_DATA_TYPE_PARSER_LIST;
 
     return p;
 }
@@ -1306,7 +1306,7 @@ vepc_and(char const * name, int count, va_list args)
         return NULL;
     }
     p->data.parser_list = parser_list_create_v(count, args);
-    p->data.data_type = PARSER_DATA_TYPE_PARSER_LIST;
+    p->data.type = PARSER_DATA_TYPE_PARSER_LIST;
 
     return p;
 }
@@ -1408,7 +1408,7 @@ epc_skip(char const * name, epc_parser_t * parser_to_skip)
         return NULL;
     }
     p->data.parser = parser_to_skip;
-    p->data.data_type = PARSER_DATA_TYPE_PARSER;
+    p->data.type = PARSER_DATA_TYPE_PARSER;
 
     return p;
 }
@@ -1524,7 +1524,7 @@ epc_plus(char const * name, epc_parser_t * parser_to_repeat)
         return NULL;
     }
     p->data.parser = parser_to_repeat;
-    p->data.data_type = PARSER_DATA_TYPE_PARSER;
+    p->data.type = PARSER_DATA_TYPE_PARSER;
 
     return p;
 }
@@ -1574,7 +1574,7 @@ epc_char_range(char const * name, char char_start, char char_end)
     {
         return NULL;
     }
-    p->data.data_type = PARSER_DATA_TYPE_CHAR_RANGE;
+    p->data.type = PARSER_DATA_TYPE_CHAR_RANGE;
     p->data.range.start = char_start;
     p->data.range.end = char_end;
 
@@ -1668,7 +1668,7 @@ epc_none_of(char const * name, char const * chars_to_avoid)
         free(p);
         return NULL;
     }
-    p->data.data_type = PARSER_DATA_TYPE_STRING;
+    p->data.type = PARSER_DATA_TYPE_STRING;
     p->data.string = duplicated_chars;
 
     return p;
@@ -1764,7 +1764,7 @@ epc_many(char const * name, epc_parser_t * p_to_repeat)
         return NULL;
     }
     p->data.parser = p_to_repeat;
-    p->data.data_type = PARSER_DATA_TYPE_PARSER;
+    p->data.type = PARSER_DATA_TYPE_PARSER;
 
     return p;
 }
@@ -1876,7 +1876,7 @@ epc_count(char const * name, int num, epc_parser_t * p_to_repeat)
     {
         return NULL;
     }
-    p->data.data_type = PARSER_DATA_TYPE_COUNT;
+    p->data.type = PARSER_DATA_TYPE_COUNT;
     p->data.count.count = num;
     p->data.count.parser = p_to_repeat;
     return p;
@@ -1991,7 +1991,7 @@ epc_between(char const * name, epc_parser_t * p_open, epc_parser_t * p_wrapped, 
     {
         return NULL;
     }
-    p->data.data_type = PARSER_DATA_TYPE_BETWEEN;
+    p->data.type = PARSER_DATA_TYPE_BETWEEN;
     p->data.between.open = p_open;
     p->data.between.parser = p_wrapped;
     p->data.between.close = p_close;
@@ -2149,7 +2149,7 @@ epc_delimited(char const * name, epc_parser_t * item_parser, epc_parser_t * deli
     {
         return NULL;
     }
-    p->data.data_type = PARSER_DATA_TYPE_DELIMITED;
+    p->data.type = PARSER_DATA_TYPE_DELIMITED;
     p->data.delimited.item = item_parser;
     p->data.delimited.delimiter = delimiter_parser;
 
@@ -2248,7 +2248,7 @@ epc_optional(char const * name, epc_parser_t * p_to_make_optional)
         return NULL;
     }
     p->data.parser = p_to_make_optional;
-    p->data.data_type = PARSER_DATA_TYPE_PARSER;
+    p->data.type = PARSER_DATA_TYPE_PARSER;
 
     return p;
 }
@@ -2312,7 +2312,7 @@ epc_lookahead(char const * name, epc_parser_t * p_to_lookahead)
         return NULL;
     }
     p->data.parser = p_to_lookahead;
-    p->data.data_type = PARSER_DATA_TYPE_PARSER;
+    p->data.type = PARSER_DATA_TYPE_PARSER;
 
     return p;
 }
@@ -2385,7 +2385,7 @@ epc_not(char const * name, epc_parser_t * p_to_not_match)
         return NULL;
     }
     p->data.parser = p_to_not_match;
-    p->data.data_type = PARSER_DATA_TYPE_PARSER;
+    p->data.type = PARSER_DATA_TYPE_PARSER;
 
     return p;
 }
@@ -2412,7 +2412,7 @@ epc_fail(char const * name, char const * message)
         free(p);
         return NULL;
     }
-    p->data.data_type = PARSER_DATA_TYPE_STRING;
+    p->data.type = PARSER_DATA_TYPE_STRING;
     p->data.string = duplicated_message;
     return p;
 }
@@ -2552,7 +2552,7 @@ epc_one_of(char const * name, char const * chars_to_match)
         free(p);
         return NULL;
     }
-    p->data.data_type = PARSER_DATA_TYPE_STRING;
+    p->data.type = PARSER_DATA_TYPE_STRING;
     p->data.string = duplicated_chars;
 
     return p;
@@ -2686,7 +2686,7 @@ epc_lexeme(char const * name, epc_parser_t * p)
     {
         return NULL;
     }
-    lex->data.data_type = PARSER_DATA_TYPE_LEXEME;
+    lex->data.type = PARSER_DATA_TYPE_LEXEME;
     lex->data.lexeme.parser = p;
     lex->data.lexeme.consume_comments = true;
 
@@ -2806,7 +2806,7 @@ epc_chainl1(char const * name, epc_parser_t * item_parser, epc_parser_t * op_par
     {
         return NULL;
     }
-    p->data.data_type = PARSER_DATA_TYPE_DELIMITED; // Reusing this for item/op
+    p->data.type = PARSER_DATA_TYPE_DELIMITED; // Reusing this for item/op
     p->data.delimited.item = item_parser;
     p->data.delimited.delimiter = op_parser;
 
@@ -3030,7 +3030,7 @@ epc_chainr1(char const * name, epc_parser_t * item_parser, epc_parser_t * op_par
     {
         return NULL;
     }
-    p->data.data_type = PARSER_DATA_TYPE_DELIMITED; // Reusing for item/op
+    p->data.type = PARSER_DATA_TYPE_DELIMITED; // Reusing for item/op
     p->data.delimited.item = item_parser;
     p->data.delimited.delimiter = op_parser;
 
@@ -3073,8 +3073,8 @@ epc_parser_duplicate(epc_parser_t * const dst, epc_parser_t const * const src)
     dst->tag = src->tag;
 
     parser_data_free(&dst->data);
-    dst->data.data_type = src->data.data_type;
-    switch (src->data.data_type)
+    dst->data.type = src->data.type;
+    switch (src->data.type)
     {
     case PARSER_DATA_TYPE_NONE:
     case PARSER_DATA_TYPE_PARSER:
