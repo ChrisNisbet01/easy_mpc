@@ -1,20 +1,20 @@
-#include "CppUTest/TestHarness.h"
-#include "CppUTestExt/MockSupport.h"
-#include <iostream>
-
 #include "easy_pc_private.h"
 
-#include <string.h>
+#include "CppUTest/TestHarness.h"
+#include "CppUTestExt/MockSupport.h"
+
+#include <iostream>
+#include <stdarg.h> // For va_list in epc_ast_builder_set_error
 #include <stdio.h>
 #include <stdlib.h> // For malloc, free
-#include <stdarg.h> // For va_list in epc_ast_builder_set_error
+#include <string.h>
 
 // --- Mock AST Node Definition ---
 typedef struct MyNode
 {
-    const char *type;
-    const char *value; // Content from CPT node
-    struct MyNode **children;
+    char const * type;
+    char const * value; // Content from CPT node
+    struct MyNode ** children;
     int children_count;
 } MyNode_t;
 
@@ -40,14 +40,14 @@ typedef struct
     int free_call_count;
     int enter_call_count;
     int action_call_count[MAX_ACTIONS];
-    const char *last_enter_tag;
+    char const * last_enter_tag;
 } TestUserData;
 
 // --- Helper for Mock Node Creation and Freeing ---
 static MyNode_t *
-MyNode_create(const char *type, const char *value, size_t value_len)
+MyNode_create(char const * type, char const * value, size_t value_len)
 {
-    MyNode_t *node = (MyNode_t *)calloc(1, sizeof(*node));
+    MyNode_t * node = (MyNode_t *)calloc(1, sizeof(*node));
     if (node)
     {
         node->type = type; // Static string, no need to strdup
@@ -60,9 +60,9 @@ MyNode_create(const char *type, const char *value, size_t value_len)
 }
 
 static void
-MyNode_free(MyNode_t *node, void * user_data)
+MyNode_free(MyNode_t * node, void * user_data)
 {
-    TestUserData *data = (TestUserData *)user_data;
+    TestUserData * data = (TestUserData *)user_data;
 
     if (!node)
     {
@@ -89,16 +89,16 @@ MyNode_free(MyNode_t *node, void * user_data)
 
 // --- Mock Callbacks for epc_ast_action_cb ---
 static void
-mock_free_node_cb(void *node, void *user_data)
+mock_free_node_cb(void * node, void * user_data)
 {
-    MyNode_t *my_node = (MyNode_t *)node;
+    MyNode_t * my_node = (MyNode_t *)node;
     MyNode_free(my_node, user_data);
 }
 
 static void
-mock_enter_node_cb(epc_ast_builder_ctx_t *ctx, epc_cpt_node_t *node, void *user_data)
+mock_enter_node_cb(epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void * user_data)
 {
-    TestUserData *data = (TestUserData *)user_data;
+    TestUserData * data = (TestUserData *)user_data;
     data->enter_call_count++;
     data->last_enter_tag = node->name; // Checking name as per user instructions
     mock().actualCall("enter_node_cb").withStringParameter("name", node->name);
@@ -106,49 +106,68 @@ mock_enter_node_cb(epc_ast_builder_ctx_t *ctx, epc_cpt_node_t *node, void *user_
 
 // Example semantic action callback: Create an IDENTIFIER node
 static void
-mock_action_identifier(epc_ast_builder_ctx_t *ctx, epc_cpt_node_t *node, void **children, int count, void *user_data)
+mock_action_identifier(
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
+)
 {
-    TestUserData *data = (TestUserData *)user_data;
+    TestUserData * data = (TestUserData *)user_data;
     data->action_call_count[ACTION_IDENTIFIER]++;
-    mock().actualCall("action_IDENTIFIER").withStringParameter("cpt_name", node->name).withIntParameter("child_count", count);
+    mock()
+        .actualCall("action_IDENTIFIER")
+        .withStringParameter("cpt_name", node->name)
+        .withIntParameter("child_count", count);
 
-    MyNode_t *ast_node = MyNode_create("IDENTIFIER", epc_cpt_node_get_semantic_content(node), epc_cpt_node_get_semantic_len(node));
+    MyNode_t * ast_node
+        = MyNode_create("IDENTIFIER", epc_cpt_node_get_semantic_content(node), epc_cpt_node_get_semantic_len(node));
     epc_ast_push(ctx, ast_node);
 }
 
 // Example semantic action callback: Create a NUMBER node
 static void
-mock_action_number(epc_ast_builder_ctx_t *ctx, epc_cpt_node_t *node, void **children, int count, void *user_data)
+mock_action_number(epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data)
 {
-    TestUserData *data = (TestUserData *)user_data;
+    TestUserData * data = (TestUserData *)user_data;
     data->action_call_count[ACTION_NUMBER]++;
-    mock().actualCall("action_NUMBER").withStringParameter("cpt_name", node->name).withIntParameter("child_count", count);
+    mock()
+        .actualCall("action_NUMBER")
+        .withStringParameter("cpt_name", node->name)
+        .withIntParameter("child_count", count);
 
-    MyNode_t *ast_node = MyNode_create("NUMBER", epc_cpt_node_get_semantic_content(node), epc_cpt_node_get_semantic_len(node));
+    MyNode_t * ast_node
+        = MyNode_create("NUMBER", epc_cpt_node_get_semantic_content(node), epc_cpt_node_get_semantic_len(node));
     epc_ast_push(ctx, ast_node);
 }
 
 // Example semantic action callback: Create an ADD_OP node (binary operator)
 static void
-mock_action_add_op(epc_ast_builder_ctx_t *ctx, epc_cpt_node_t *node, void **children, int count, void *user_data)
+mock_action_add_op(epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data)
 {
-    TestUserData *data = (TestUserData *)user_data;
+    TestUserData * data = (TestUserData *)user_data;
     data->action_call_count[ACTION_ADD_OP]++;
-    mock().actualCall("action_ADD_OP").withStringParameter("cpt_name", node->name).withIntParameter("child_count", count);
+    mock()
+        .actualCall("action_ADD_OP")
+        .withStringParameter("cpt_name", node->name)
+        .withIntParameter("child_count", count);
 
-    MyNode_t *ast_node = MyNode_create("ADD_OP", epc_cpt_node_get_semantic_content(node), epc_cpt_node_get_semantic_len(node));
+    MyNode_t * ast_node
+        = MyNode_create("ADD_OP", epc_cpt_node_get_semantic_content(node), epc_cpt_node_get_semantic_len(node));
     epc_ast_push(ctx, ast_node);
 }
 
 // Example semantic action callback: Creates a generic EXPRESSION node (binary operation)
 static void
-mock_action_expression(epc_ast_builder_ctx_t *ctx, epc_cpt_node_t *node, void **children, int count, void *user_data)
+mock_action_expression(
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
+)
 {
-    TestUserData *data = (TestUserData *)user_data;
+    TestUserData * data = (TestUserData *)user_data;
     data->action_call_count[ACTION_EXPRESSION]++;
-    mock().actualCall("action_EXPRESSION").withStringParameter("cpt_name", node->name).withIntParameter("child_count", count);
+    mock()
+        .actualCall("action_EXPRESSION")
+        .withStringParameter("cpt_name", node->name)
+        .withIntParameter("child_count", count);
 
-    MyNode_t *ast_node = MyNode_create("EXPR", NULL, 0);
+    MyNode_t * ast_node = MyNode_create("EXPR", NULL, 0);
     ast_node->children_count = count;
     ast_node->children = (MyNode_t **)calloc(count, sizeof(*ast_node->children));
     for (int i = 0; i < count; ++i)
@@ -160,13 +179,13 @@ mock_action_expression(epc_ast_builder_ctx_t *ctx, epc_cpt_node_t *node, void **
 
 // Example semantic action callback: Create a ROOT node
 static void
-mock_action_root(epc_ast_builder_ctx_t *ctx, epc_cpt_node_t *node, void **children, int count, void *user_data)
+mock_action_root(epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data)
 {
-    TestUserData *data = (TestUserData *)user_data;
+    TestUserData * data = (TestUserData *)user_data;
     data->action_call_count[ACTION_ROOT]++;
     mock().actualCall("action_ROOT").withStringParameter("cpt_name", node->name).withIntParameter("child_count", count);
 
-    MyNode_t *ast_node = MyNode_create("ROOT", NULL, 0);
+    MyNode_t * ast_node = MyNode_create("ROOT", NULL, 0);
     ast_node->children_count = count;
     ast_node->children = (MyNode_t **)calloc(count, sizeof(*ast_node->children));
     for (int i = 0; i < count; ++i)
@@ -178,11 +197,14 @@ mock_action_root(epc_ast_builder_ctx_t *ctx, epc_cpt_node_t *node, void **childr
 
 // Callback that doesn't push anything (pruning)
 static void
-mock_action_prune(epc_ast_builder_ctx_t *ctx, epc_cpt_node_t *node, void **children, int count, void *user_data)
+mock_action_prune(epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data)
 {
-    TestUserData *data = (TestUserData *)user_data;
+    TestUserData * data = (TestUserData *)user_data;
     data->action_call_count[ACTION_PRUNE]++;
-    mock().actualCall("action_PRUNE").withStringParameter("cpt_name", node->name).withIntParameter("child_count", count);
+    mock()
+        .actualCall("action_PRUNE")
+        .withStringParameter("cpt_name", node->name)
+        .withIntParameter("child_count", count);
 
     // Explicitly free children that are "pruned" if they were not already freed
     if (ctx->registry->free_node)
@@ -197,11 +219,16 @@ mock_action_prune(epc_ast_builder_ctx_t *ctx, epc_cpt_node_t *node, void **child
 
 // Callback that pushes multiple children (flattening)
 static void
-mock_action_pass_children(epc_ast_builder_ctx_t *ctx, epc_cpt_node_t *node, void **children, int count, void *user_data)
+mock_action_pass_children(
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
+)
 {
-    TestUserData *data = (TestUserData *)user_data;
+    TestUserData * data = (TestUserData *)user_data;
     data->action_call_count[ACTION_PASS_CHILDREN]++;
-    mock().actualCall("action_PASS_CHILDREN").withStringParameter("cpt_name", node->name).withIntParameter("child_count", count);
+    mock()
+        .actualCall("action_PASS_CHILDREN")
+        .withStringParameter("cpt_name", node->name)
+        .withIntParameter("child_count", count);
 
     for (int i = 0; i < count; ++i)
     {
@@ -209,17 +236,17 @@ mock_action_pass_children(epc_ast_builder_ctx_t *ctx, epc_cpt_node_t *node, void
     }
 }
 
-
 TEST_GROUP(AstBuilderTest)
 {
-    epc_parser_list *parser_list;
-    epc_parser_t *grammar_root;
+    epc_parser_list * parser_list;
+    epc_parser_t * grammar_root;
     epc_parse_session_t session;
-    epc_ast_hook_registry_t *registry;
+    epc_ast_hook_registry_t * registry;
     TestUserData user_data_obj;
 
     void setup() override
     {
+        session = (epc_parse_session_t){0}; // Initialize session to zero
         parser_list = epc_parser_list_create();
         grammar_root = NULL; // Initialized by specific tests
 
@@ -259,7 +286,7 @@ TEST_GROUP(AstBuilderTest)
 // --- Single Parser Single Action Test ---
 TEST(AstBuilderTest, SingleParserSingleAction)
 {
-    epc_parser_t *p_root = epc_int_l(parser_list, "Root");
+    epc_parser_t * p_root = epc_int_l(parser_list, "Root");
     epc_parser_set_ast_action(p_root, ACTION_NUMBER);
     grammar_root = p_root;
 
@@ -270,12 +297,11 @@ TEST(AstBuilderTest, SingleParserSingleAction)
     mock().expectOneCall("enter_node_cb").withStringParameter("name", "Root");
     mock().expectOneCall("action_NUMBER").withStringParameter("cpt_name", "Root").withIntParameter("child_count", 0);
 
-
     epc_ast_result_t ast_result = epc_ast_build(session.result.data.success, registry, &user_data_obj);
     CHECK_FALSE(ast_result.has_error);
     CHECK_TRUE(ast_result.ast_root != NULL);
 
-    MyNode_t *char_node = (MyNode_t *)ast_result.ast_root;
+    MyNode_t * char_node = (MyNode_t *)ast_result.ast_root;
     STRCMP_EQUAL("NUMBER", char_node->type);
     STRCMP_EQUAL("123", char_node->value);
     LONGS_EQUAL(0, char_node->children_count);
@@ -292,8 +318,8 @@ TEST(AstBuilderTest, SingleParserSingleAction)
 // --- Test Case 1: Simple Number and Root ---
 TEST(AstBuilderTest, BuildsSimpleNumberAst)
 {
-    epc_parser_t *p_number = epc_int_l(parser_list, "Number");
-    epc_parser_t *p_root = epc_or_l(parser_list, "Root", 1, p_number);
+    epc_parser_t * p_number = epc_int_l(parser_list, "Number");
+    epc_parser_t * p_root = epc_or_l(parser_list, "Root", 1, p_number);
     epc_parser_set_ast_action(p_number, ACTION_NUMBER);
     epc_parser_set_ast_action(p_root, ACTION_ROOT);
     grammar_root = p_root;
@@ -307,16 +333,15 @@ TEST(AstBuilderTest, BuildsSimpleNumberAst)
     mock().expectOneCall("action_NUMBER").withStringParameter("cpt_name", "Number").withIntParameter("child_count", 0);
     mock().expectOneCall("action_ROOT").withStringParameter("cpt_name", "Root").withIntParameter("child_count", 1);
 
-
     epc_ast_result_t ast_result = epc_ast_build(session.result.data.success, registry, &user_data_obj);
     CHECK_FALSE(ast_result.has_error);
     CHECK_TRUE(ast_result.ast_root != NULL);
 
-    MyNode_t *root_node = (MyNode_t *)ast_result.ast_root;
+    MyNode_t * root_node = (MyNode_t *)ast_result.ast_root;
     STRCMP_EQUAL("ROOT", root_node->type);
     LONGS_EQUAL(1, root_node->children_count);
 
-    MyNode_t *number_node = root_node->children[0];
+    MyNode_t * number_node = root_node->children[0];
     STRCMP_EQUAL("NUMBER", number_node->type);
     STRCMP_EQUAL("123", number_node->value);
 
@@ -334,8 +359,8 @@ TEST(AstBuilderTest, BuildsSimpleNumberAst)
 // --- Test Case 2: Simple Identifier, default action ---
 TEST(AstBuilderTest, BuildsSimpleIdentifierAstWithDefaultAction)
 {
-    epc_parser_t *p_identifier = epc_string_l(parser_list, "Identifier", "abc");
-    epc_parser_t *p_root = epc_or_l(parser_list, "Root", 1, p_identifier);
+    epc_parser_t * p_identifier = epc_string_l(parser_list, "Identifier", "abc");
+    epc_parser_t * p_root = epc_or_l(parser_list, "Root", 1, p_identifier);
     epc_parser_set_ast_action(p_identifier, ACTION_IDENTIFIER);
     // p_root has no specific action, should default to pushing its child (identifier)
     grammar_root = p_root;
@@ -345,14 +370,16 @@ TEST(AstBuilderTest, BuildsSimpleIdentifierAstWithDefaultAction)
 
     mock().expectOneCall("enter_node_cb").withStringParameter("name", "Root");
     mock().expectOneCall("enter_node_cb").withStringParameter("name", "Identifier");
-    mock().expectOneCall("action_IDENTIFIER").withStringParameter("cpt_name", "Identifier").withIntParameter("child_count", 0);
-
+    mock()
+        .expectOneCall("action_IDENTIFIER")
+        .withStringParameter("cpt_name", "Identifier")
+        .withIntParameter("child_count", 0);
 
     epc_ast_result_t ast_result = epc_ast_build(session.result.data.success, registry, &user_data_obj);
     CHECK_FALSE(ast_result.has_error);
     CHECK_TRUE(ast_result.ast_root != NULL);
 
-    MyNode_t *identifier_node = (MyNode_t *)ast_result.ast_root;
+    MyNode_t * identifier_node = (MyNode_t *)ast_result.ast_root;
     STRCMP_EQUAL("IDENTIFIER", identifier_node->type);
     STRCMP_EQUAL("abc", identifier_node->value);
     LONGS_EQUAL(0, identifier_node->children_count); // Identifier is a leaf node in this mock
@@ -369,10 +396,10 @@ TEST(AstBuilderTest, BuildsSimpleIdentifierAstWithDefaultAction)
 // --- Test Case 3: Binary Expression (Number OP Number) ---
 TEST(AstBuilderTest, BuildsBinaryExpressionAst)
 {
-    epc_parser_t *p_num = epc_int_l(parser_list, "Number");
-    epc_parser_t *p_plus = epc_char_l(parser_list, "AddOp", '+');
-    epc_parser_t *p_expr = epc_and_l(parser_list, "Expression", 3, p_num, p_plus, p_num);
-    epc_parser_t *p_root = epc_or_l(parser_list, "Root", 1, p_expr);
+    epc_parser_t * p_num = epc_int_l(parser_list, "Number");
+    epc_parser_t * p_plus = epc_char_l(parser_list, "AddOp", '+');
+    epc_parser_t * p_expr = epc_and_l(parser_list, "Expression", 3, p_num, p_plus, p_num);
+    epc_parser_t * p_root = epc_or_l(parser_list, "Root", 1, p_expr);
 
     epc_parser_set_ast_action(p_num, ACTION_NUMBER);
     epc_parser_set_ast_action(p_plus, ACTION_ADD_OP);
@@ -392,25 +419,27 @@ TEST(AstBuilderTest, BuildsBinaryExpressionAst)
     mock().expectOneCall("action_ADD_OP").withStringParameter("cpt_name", "AddOp").withIntParameter("child_count", 0);
     mock().expectOneCall("enter_node_cb").withStringParameter("name", "Number");
     mock().expectOneCall("action_NUMBER").withStringParameter("cpt_name", "Number").withIntParameter("child_count", 0);
-    mock().expectOneCall("action_EXPRESSION").withStringParameter("cpt_name", "Expression").withIntParameter("child_count", 3);
+    mock()
+        .expectOneCall("action_EXPRESSION")
+        .withStringParameter("cpt_name", "Expression")
+        .withIntParameter("child_count", 3);
     mock().expectOneCall("action_ROOT").withStringParameter("cpt_name", "Root").withIntParameter("child_count", 1);
-
 
     epc_ast_result_t ast_result = epc_ast_build(session.result.data.success, registry, &user_data_obj);
     CHECK_FALSE(ast_result.has_error);
     CHECK_TRUE(ast_result.ast_root != NULL);
 
-    MyNode_t *root_node = (MyNode_t *)ast_result.ast_root;
+    MyNode_t * root_node = (MyNode_t *)ast_result.ast_root;
     STRCMP_EQUAL("ROOT", root_node->type);
     LONGS_EQUAL(1, root_node->children_count);
 
-    MyNode_t *expr_node = root_node->children[0];
+    MyNode_t * expr_node = root_node->children[0];
     STRCMP_EQUAL("EXPR", expr_node->type);
     LONGS_EQUAL(3, expr_node->children_count);
 
-    MyNode_t *num1 = expr_node->children[0];
-    MyNode_t *op = expr_node->children[1];
-    MyNode_t *num2 = expr_node->children[2];
+    MyNode_t * num1 = expr_node->children[0];
+    MyNode_t * op = expr_node->children[1];
+    MyNode_t * num2 = expr_node->children[2];
 
     STRCMP_EQUAL("NUMBER", num1->type);
     STRCMP_EQUAL("1", num1->value);
@@ -438,20 +467,23 @@ TEST(AstBuilderTest, BuildsBinaryExpressionAst)
 // --- Test Case 5: Error during AST node creation (within action callback) ---
 TEST(AstBuilderTest, HandlesErrorDuringActionCallback)
 {
-    epc_parser_t *p_number = epc_int_l(parser_list, "Number");
-    epc_parser_t *p_root = epc_or_l(parser_list, "Root", 1, p_number);
+    epc_parser_t * p_number = epc_int_l(parser_list, "Number");
+    epc_parser_t * p_root = epc_or_l(parser_list, "Root", 1, p_number);
     epc_parser_set_ast_action(p_number, ACTION_NUMBER);
     epc_parser_set_ast_action(p_root, ACTION_ROOT);
     grammar_root = p_root;
 
     // Replace the NUMBER action to simulate an allocation failure
-    epc_ast_hook_registry_set_action(registry, ACTION_NUMBER, [](epc_ast_builder_ctx_t *ctx, epc_cpt_node_t *node, void **children, int count, void *user_data) {
-        // Simulate allocation failure and set error in context
-        epc_ast_builder_set_error(ctx, "Simulated allocation failure in action_NUMBER for %s", node->name);
-        mock().actualCall("action_NUMBER_fail").withStringParameter("cpt_name", node->name);
-        // Do NOT push any node, the error condition will trigger cleanup
-    });
-
+    epc_ast_hook_registry_set_action(
+        registry,
+        ACTION_NUMBER,
+        [](epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data) {
+            // Simulate allocation failure and set error in context
+            epc_ast_builder_set_error(ctx, "Simulated allocation failure in action_NUMBER for %s", node->name);
+            mock().actualCall("action_NUMBER_fail").withStringParameter("cpt_name", node->name);
+            // Do NOT push any node, the error condition will trigger cleanup
+        }
+    );
 
     session = epc_parse_input(grammar_root, "123");
     CHECK_FALSE(session.result.is_error);
@@ -473,10 +505,10 @@ TEST(AstBuilderTest, HandlesErrorDuringActionCallback)
 // --- Test Case 6: Pruning (action callback returns zero nodes) ---
 TEST(AstBuilderTest, PrunesAstNodes)
 {
-    epc_parser_t *p_keyword = epc_string_l(parser_list, "Keyword", "skipme");
-    epc_parser_t *p_number = epc_int_l(parser_list, "Number");
-    epc_parser_t *p_seq = epc_and_l(parser_list, "Sequence", 2, p_keyword, p_number);
-    epc_parser_t *p_root = epc_or_l(parser_list, "Root", 1, p_seq);
+    epc_parser_t * p_keyword = epc_string_l(parser_list, "Keyword", "skipme");
+    epc_parser_t * p_number = epc_int_l(parser_list, "Number");
+    epc_parser_t * p_seq = epc_and_l(parser_list, "Sequence", 2, p_keyword, p_number);
+    epc_parser_t * p_root = epc_or_l(parser_list, "Root", 1, p_seq);
 
     epc_parser_set_ast_action(p_keyword, ACTION_PRUNE);
     epc_parser_set_ast_action(p_number, ACTION_NUMBER);
@@ -493,19 +525,21 @@ TEST(AstBuilderTest, PrunesAstNodes)
     mock().expectOneCall("action_PRUNE").withStringParameter("cpt_name", "Keyword").withIntParameter("child_count", 0);
     mock().expectOneCall("enter_node_cb").withStringParameter("name", "Number");
     mock().expectOneCall("action_NUMBER").withStringParameter("cpt_name", "Number").withIntParameter("child_count", 0);
-    mock().expectOneCall("action_PASS_CHILDREN").withStringParameter("cpt_name", "Sequence").withIntParameter("child_count", 1); // Only number is left
+    mock()
+        .expectOneCall("action_PASS_CHILDREN")
+        .withStringParameter("cpt_name", "Sequence")
+        .withIntParameter("child_count", 1); // Only number is left
     mock().expectOneCall("action_ROOT").withStringParameter("cpt_name", "Root").withIntParameter("child_count", 1);
-
 
     epc_ast_result_t ast_result = epc_ast_build(session.result.data.success, registry, &user_data_obj);
     CHECK_FALSE(ast_result.has_error);
     CHECK_TRUE(ast_result.ast_root != NULL);
 
-    MyNode_t *root_node = (MyNode_t *)ast_result.ast_root;
+    MyNode_t * root_node = (MyNode_t *)ast_result.ast_root;
     STRCMP_EQUAL("ROOT", root_node->type);
     LONGS_EQUAL(1, root_node->children_count);
 
-    MyNode_t *number_node = root_node->children[0];
+    MyNode_t * number_node = root_node->children[0];
     STRCMP_EQUAL("NUMBER", number_node->type);
     STRCMP_EQUAL("123", number_node->value);
 
@@ -527,13 +561,19 @@ TEST(AstBuilderTest, AstStackGrowsDynamically)
 {
     // Create a deeply nested structure (e.g., A = (B); B = (C); C = (D); ...)
     // CPT traversal will push many placeholders
-    epc_parser_t *p_char_a = epc_char_l(parser_list, "A", 'a');
-    epc_parser_t *p_expr_fwd = epc_parser_allocate_l(parser_list, "ExprFwd");
-    epc_parser_t *p_paren_expr = epc_between_l(parser_list, "ParenExpr", epc_char_l(parser_list, "LParen", '('), p_expr_fwd, epc_char_l(parser_list, "RParen", ')'));
-    epc_parser_t *p_expr_alt = epc_or_l(parser_list, "ExprAlt", 2, p_char_a, p_paren_expr);
+    epc_parser_t * p_char_a = epc_char_l(parser_list, "A", 'a');
+    epc_parser_t * p_expr_fwd = epc_parser_fwd_decl_l(parser_list, "ExprFwd");
+    epc_parser_t * p_paren_expr = epc_between_l(
+        parser_list,
+        "ParenExpr",
+        epc_char_l(parser_list, "LParen", '('),
+        p_expr_fwd,
+        epc_char_l(parser_list, "RParen", ')')
+    );
+    epc_parser_t * p_expr_alt = epc_or_l(parser_list, "ExprAlt", 2, p_char_a, p_paren_expr);
     epc_parser_duplicate(p_expr_fwd, p_expr_alt);
 
-    epc_parser_t *p_root = epc_or_l(parser_list, "Root", 1, p_expr_fwd);
+    epc_parser_t * p_root = epc_or_l(parser_list, "Root", 1, p_expr_fwd);
 
     epc_parser_set_ast_action(p_char_a, ACTION_IDENTIFIER);
     epc_parser_set_ast_action(p_paren_expr, ACTION_EXPRESSION);
@@ -541,10 +581,11 @@ TEST(AstBuilderTest, AstStackGrowsDynamically)
     epc_parser_set_ast_action(p_root, ACTION_ROOT);
     grammar_root = p_root;
 
-    // Input: "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((a))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"
+    // Input:
+    // "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((a))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"
     // This creates a CPT depth equal to the number of opening parentheses (64 in this case) + 2 (Root, A)
     // Each PUSH_PLACEHOLDER will increment the stack depth
-    const int depth = 64;
+    int const depth = 64;
     char input[200]; /* Must be at least as large as 2 * depth + 1. */
     int offset = 0;
     for (int i = 0; i < depth; ++i)
@@ -566,11 +607,11 @@ TEST(AstBuilderTest, AstStackGrowsDynamically)
     CHECK_FALSE(ast_result.has_error);
     CHECK_TRUE(ast_result.ast_root != NULL);
 
-    MyNode_t *root_node = (MyNode_t *)ast_result.ast_root;
+    MyNode_t * root_node = (MyNode_t *)ast_result.ast_root;
     STRCMP_EQUAL("ROOT", root_node->type);
     LONGS_EQUAL(1, root_node->children_count);
 
-    MyNode_t *current_node = root_node->children[0];
+    MyNode_t * current_node = root_node->children[0];
     for (int i = 0; i < depth; ++i)
     {
         STRCMP_EQUAL("EXPR", current_node->type);
@@ -592,10 +633,10 @@ TEST(AstBuilderTest, AstStackGrowsDynamically)
 TEST(AstBuilderTest, DefaultActionPushesChildrenBack)
 {
     // CPT: Root -> Seq (no action) -> Num1 (ACTION_NUMBER), Num2 (ACTION_NUMBER)
-    epc_parser_t *p_num1 = epc_digit_l(parser_list, "Num1");
-    epc_parser_t *p_num2 = epc_digit_l(parser_list, "Num2");
-    epc_parser_t *p_seq = epc_and_l(parser_list, "Sequence", 2, p_num1, p_num2);
-    epc_parser_t *p_root = epc_or_l(parser_list, "Root", 1, p_seq);
+    epc_parser_t * p_num1 = epc_digit_l(parser_list, "Num1");
+    epc_parser_t * p_num2 = epc_digit_l(parser_list, "Num2");
+    epc_parser_t * p_seq = epc_and_l(parser_list, "Sequence", 2, p_num1, p_num2);
+    epc_parser_t * p_root = epc_or_l(parser_list, "Root", 1, p_seq);
 
     epc_parser_set_ast_action(p_num1, ACTION_NUMBER);
     epc_parser_set_ast_action(p_num2, ACTION_NUMBER);
@@ -613,18 +654,21 @@ TEST(AstBuilderTest, DefaultActionPushesChildrenBack)
     mock().expectOneCall("enter_node_cb").withStringParameter("name", "Num2");
     mock().expectOneCall("action_NUMBER").withStringParameter("cpt_name", "Num2").withIntParameter("child_count", 0);
     // No explicit action_PASS_CHILDREN for Sequence
-    mock().expectOneCall("action_ROOT").withStringParameter("cpt_name", "Root").withIntParameter("child_count", 2); // Root gets both numbers
+    mock()
+        .expectOneCall("action_ROOT")
+        .withStringParameter("cpt_name", "Root")
+        .withIntParameter("child_count", 2); // Root gets both numbers
 
     epc_ast_result_t ast_result = epc_ast_build(session.result.data.success, registry, &user_data_obj);
     CHECK_FALSE(ast_result.has_error);
     CHECK_TRUE(ast_result.ast_root != NULL);
 
-    MyNode_t *root_node = (MyNode_t *)ast_result.ast_root;
+    MyNode_t * root_node = (MyNode_t *)ast_result.ast_root;
     STRCMP_EQUAL("ROOT", root_node->type);
     LONGS_EQUAL(2, root_node->children_count); // Expect 2 children directly under root
 
-    MyNode_t *num1 = root_node->children[0];
-    MyNode_t *num2 = root_node->children[1];
+    MyNode_t * num1 = root_node->children[0];
+    MyNode_t * num2 = root_node->children[1];
     STRCMP_EQUAL("NUMBER", num1->type);
     STRCMP_EQUAL("1", num1->value);
     STRCMP_EQUAL("NUMBER", num2->type);
@@ -645,30 +689,34 @@ TEST(AstBuilderTest, DefaultActionPushesChildrenBack)
 // --- Test Case 9: Error recovery for partially built AST ---
 TEST(AstBuilderTest, ErrorRecoveryFreesPartialAst)
 {
-    epc_parser_t *p_num = epc_int_l(parser_list, "Number");
-    epc_parser_t *p_plus = epc_char_l(parser_list, "AddOp", '+');
-    epc_parser_t *p_expr = epc_and_l(parser_list, "Expression", 3, p_num, p_plus, p_num);
-    epc_parser_t *p_root = epc_or_l(parser_list, "Root", 1, p_expr);
+    epc_parser_t * p_num = epc_int_l(parser_list, "Number");
+    epc_parser_t * p_plus = epc_char_l(parser_list, "AddOp", '+');
+    epc_parser_t * p_expr = epc_and_l(parser_list, "Expression", 3, p_num, p_plus, p_num);
+    epc_parser_t * p_root = epc_or_l(parser_list, "Root", 1, p_expr);
 
     epc_parser_set_ast_action(p_num, ACTION_NUMBER);
     epc_parser_set_ast_action(p_plus, ACTION_ADD_OP);
     epc_parser_set_ast_action(p_expr, ACTION_EXPRESSION);
     // Simulate error during expression action
 
-    epc_ast_hook_registry_set_action(registry, ACTION_EXPRESSION, [](epc_ast_builder_ctx_t *ctx, epc_cpt_node_t *node, void **children, int count, void *user_data) {
-        // Free children (they were allocated, but this callback fails to build a parent)
+    epc_ast_hook_registry_set_action(
+        registry,
+        ACTION_EXPRESSION,
+        [](epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data) {
+            // Free children (they were allocated, but this callback fails to build a parent)
 
-        TestUserData *data = (TestUserData *)user_data;
-        data->action_call_count[ACTION_EXPRESSION]++;
-        if (ctx->registry->free_node)
-        {
-            for (int i = 0; i < count; ++i)
+            TestUserData * data = (TestUserData *)user_data;
+            data->action_call_count[ACTION_EXPRESSION]++;
+            if (ctx->registry->free_node)
             {
-                ctx->registry->free_node(children[i], user_data);
+                for (int i = 0; i < count; ++i)
+                {
+                    ctx->registry->free_node(children[i], user_data);
+                }
             }
+            epc_ast_builder_set_error(ctx, "Simulated error in Expression action");
         }
-        epc_ast_builder_set_error(ctx, "Simulated error in Expression action");
-    });
+    );
     epc_parser_set_ast_action(p_root, ACTION_ROOT);
     grammar_root = p_root;
 

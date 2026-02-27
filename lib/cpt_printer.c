@@ -8,6 +8,7 @@
 // Internal struct for the visitor's user_data
 typedef struct
 {
+    epc_parser_ctx_t * parse_ctx;
     char const * input_start;
     char * buffer;
     size_t current_offset;
@@ -66,10 +67,13 @@ cpt_printer_enter_node(epc_cpt_node_t * node, void * user_data)
 {
     cpt_printer_data_t * data = (cpt_printer_data_t *)user_data;
     // include content and length
-    epc_line_col_t position = epc_calculate_line_and_column(data->input_start, node->content);
+    epc_line_col_t position = epc_calculate_line_and_column(
+        data->parse_ctx, parse_ctx_get_offset_from_input(data->parse_ctx, node->content)
+    );
     char const * scontent = epc_cpt_node_get_semantic_content(node);
     size_t scontent_len = epc_cpt_node_get_semantic_len(node);
-    epc_line_col_t sposition = epc_calculate_line_and_column(data->input_start, scontent);
+    epc_line_col_t sposition
+        = epc_calculate_line_and_column(data->parse_ctx, parse_ctx_get_offset_from_input(data->parse_ctx, scontent));
     int required_len;
     char const * node_id = epc_node_id(node);
     size_t estimated_line_len
@@ -187,7 +191,7 @@ cpt_printer_exit_node(epc_cpt_node_t * node, void * user_data)
 
 // Function to print a Concrete Parse Tree (CPT) to a string.
 static char *
-epc_cpt_to_string_private(epc_cpt_node_t * node, int initial_indent_level)
+epc_cpt_to_string_private(epc_parser_ctx_t * parse_ctx, epc_cpt_node_t * node, int initial_indent_level)
 {
     if (node == NULL)
     {
@@ -197,7 +201,8 @@ epc_cpt_to_string_private(epc_cpt_node_t * node, int initial_indent_level)
     // Initialize printer data
     cpt_printer_data_t printer_data = {0};
     // Assume that the top node's content points to the start of the input.
-    printer_data.input_start = epc_cpt_node_get_content(node);
+    printer_data.parse_ctx = parse_ctx;
+    printer_data.input_start = parse_ctx_get_input_start(parse_ctx);
     printer_data.current_offset = 0;
     printer_data.indent_level = initial_indent_level;
 
@@ -248,7 +253,7 @@ epc_cpt_to_string_private(epc_cpt_node_t * node, int initial_indent_level)
 }
 
 char *
-epc_cpt_to_string(epc_cpt_node_t * node)
+epc_cpt_to_string(epc_parser_ctx_t * parse_ctx, epc_cpt_node_t * node)
 {
-    return epc_cpt_to_string_private(node, 0);
+    return epc_cpt_to_string_private(parse_ctx, node, 0);
 }

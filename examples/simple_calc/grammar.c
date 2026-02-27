@@ -1,9 +1,9 @@
-#include "grammar.h"
-
 #include "ast.h"
-#include "simple_calc_ast_actions.h"
 #include "ast_evaluator.h"
 #include "function_definitions.h"
+#include "grammar.h"
+#include "simple_calc_ast_actions.h"
+
 #include "easy_pc/easy_pc_ast.h" // Added for AST types and functions
 
 #include <stdio.h>
@@ -78,18 +78,20 @@ make_functions_parser(epc_parser_list * list)
 epc_parser_t *
 create_formula_grammar(
     epc_parser_list * list,
-    size_t num_variables, variable_t const * variables,
-    size_t num_constants, variable_t const * constants
+    size_t num_variables,
+    variable_t const * variables,
+    size_t num_constants,
+    variable_t const * constants
 )
 {
     // Forward declarations for recursion
-    epc_parser_t * expr_fwd   = epc_parser_allocate_l(list, "expr");
-    epc_parser_t * term_fwd   = epc_parser_allocate_l(list, "term");
-    epc_parser_t * factor_fwd = epc_parser_allocate_l(list, "factor");
+    epc_parser_t * expr_fwd = epc_parser_fwd_decl_l(list, "expr");
+    epc_parser_t * term_fwd = epc_parser_fwd_decl_l(list, "term");
+    epc_parser_t * factor_fwd = epc_parser_fwd_decl_l(list, "factor");
 
     // Literals
-    epc_parser_t * number_    = epc_double_l(list, "number");
-    epc_parser_t * number     = epc_lexeme_l(list, "number", number_);
+    epc_parser_t * number_ = epc_double_l(list, "number");
+    epc_parser_t * number = epc_lexeme_l(list, "number", number_);
     epc_parser_set_ast_action(number_, AST_ACTION_CREATE_NUMBER_FROM_CONTENT);
 
     // Constants
@@ -139,45 +141,45 @@ create_formula_grammar(
     epc_parser_set_ast_action(variable, AST_ACTION_CREATE_IDENTIFIER);
 
     // Operators
-    epc_parser_t * add_op         = epc_char_l(list, "add", '+');
-    epc_parser_t * sub_op         = epc_char_l(list, "sub", '-');
-    epc_parser_t * add_sub_       = epc_or_l(list, "add_sub", 2, add_op, sub_op);
-    epc_parser_t * add_sub        = epc_lexeme_l(list, "add_sub", add_sub_);
+    epc_parser_t * add_op = epc_char_l(list, "add", '+');
+    epc_parser_t * sub_op = epc_char_l(list, "sub", '-');
+    epc_parser_t * add_sub_ = epc_or_l(list, "add_sub", 2, add_op, sub_op);
+    epc_parser_t * add_sub = epc_lexeme_l(list, "add_sub", add_sub_);
     epc_parser_set_ast_action(add_sub, AST_ACTION_CREATE_OPERATOR_FROM_CHAR);
 
-    epc_parser_t * mul_op         = epc_char_l(list, "mul", '*');
-    epc_parser_t * div_op         = epc_char_l(list, "div", '/');
-    epc_parser_t * mul_div_       = epc_or_l(list, "mul_div", 2, mul_op, div_op);
-    epc_parser_t * mul_div        = epc_lexeme_l(list, "mul_div", mul_div_);
+    epc_parser_t * mul_op = epc_char_l(list, "mul", '*');
+    epc_parser_t * div_op = epc_char_l(list, "div", '/');
+    epc_parser_t * mul_div_ = epc_or_l(list, "mul_div", 2, mul_op, div_op);
+    epc_parser_t * mul_div = epc_lexeme_l(list, "mul_div", mul_div_);
     epc_parser_set_ast_action(mul_div, AST_ACTION_CREATE_OPERATOR_FROM_CHAR);
 
     // Parentheses
-    epc_parser_t * lparen_        = epc_char_l(list, "(", '(');
-    epc_parser_t * lparen         = epc_lexeme_l(list, "(", lparen_);
-    epc_parser_t * rparen_        = epc_char_l(list, ")", ')');
-    epc_parser_t * rparen         = epc_lexeme_l(list, ")", rparen_);
+    epc_parser_t * lparen_ = epc_char_l(list, "(", '(');
+    epc_parser_t * lparen = epc_lexeme_l(list, "(", lparen_);
+    epc_parser_t * rparen_ = epc_char_l(list, ")", ')');
+    epc_parser_t * rparen = epc_lexeme_l(list, ")", rparen_);
     epc_parser_t * expr_in_parens = epc_between_l(list, "parens", lparen, expr_fwd, rparen);
 
     // Function call
-    epc_parser_t * function_call  = NULL;
-    epc_parser_t * function_      = make_functions_parser(list);
+    epc_parser_t * function_call = NULL;
+    epc_parser_t * function_ = make_functions_parser(list);
     if (function_ != NULL)
     {
         epc_parser_set_ast_action(function_, AST_ACTION_CREATE_IDENTIFIER);
-        epc_parser_t * function   = epc_lexeme_l(list, "function", function_);
+        epc_parser_t * function = epc_lexeme_l(list, "function", function_);
         epc_parser_t * arg_delim_ = epc_char_l(list, ",", ',');
-        epc_parser_t * arg_delim  = epc_lexeme_l(list, ",", arg_delim_);
-        epc_parser_t * fn_lparen  = epc_char_l(list, "(", '(');
+        epc_parser_t * arg_delim = epc_lexeme_l(list, ",", arg_delim_);
+        epc_parser_t * fn_lparen = epc_char_l(list, "(", '(');
         epc_parser_t * fn_rparen_ = epc_char_l(list, ")", ')');
-        epc_parser_t * fn_rparen  = epc_lexeme_l(list, ")", fn_rparen_);
+        epc_parser_t * fn_rparen = epc_lexeme_l(list, ")", fn_rparen_);
 
         epc_parser_t * single_arg = epc_lexeme_l(list, "single_expression_arg", expr_fwd);
-        epc_parser_t * many_args  = epc_delimited_l(list, "one_or_more_args", single_arg, arg_delim);
+        epc_parser_t * many_args = epc_delimited_l(list, "one_or_more_args", single_arg, arg_delim);
         epc_parser_set_ast_action(many_args, AST_ACTION_COLLECT_CHILD_RESULTS);
 
         epc_parser_t * zero_or_more_args = epc_optional_l(list, "optional_args_list", many_args);
-        epc_parser_t * args_in_parens    = epc_between_l(list, "args_in_parens", fn_lparen, zero_or_more_args, fn_rparen);
-        function_call  = epc_and_l(list, "function_call", 2, function, args_in_parens);
+        epc_parser_t * args_in_parens = epc_between_l(list, "args_in_parens", fn_lparen, zero_or_more_args, fn_rparen);
+        function_call = epc_and_l(list, "function_call", 2, function, args_in_parens);
         epc_parser_set_ast_action(function_call, AST_ACTION_CREATE_FUNCTION_CALL);
     }
     else
@@ -186,12 +188,7 @@ create_formula_grammar(
     }
 
     // Base of factor: number | constant | ( expr )
-    epc_parser_t * factor_def =
-        epc_or_l(
-           list,
-           "primary",
-            5, number, constant, variable, function_call, expr_in_parens
-        );
+    epc_parser_t * factor_def = epc_or_l(list, "primary", 5, number, constant, variable, function_call, expr_in_parens);
     epc_parser_duplicate(factor_fwd, factor_def);
 
     // term = factor (mul_div factor)*
@@ -205,11 +202,9 @@ create_formula_grammar(
     epc_parser_duplicate(expr_fwd, expr_def);
 
     // Complete parser
-    epc_parser_t *eoi       = epc_eoi_l(list, "eoi");
-    epc_parser_t *complete  = epc_and_l(list, "formula", 2, expr_def, eoi);
+    epc_parser_t * eoi = epc_eoi_l(list, "eoi");
+    epc_parser_t * complete = epc_and_l(list, "formula", 2, expr_def, eoi);
     epc_parser_set_ast_action(complete, AST_ACTION_ASSIGN_ROOT);
 
     return complete;
 }
-
-

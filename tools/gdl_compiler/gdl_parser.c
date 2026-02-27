@@ -8,7 +8,7 @@
 epc_parser_t *
 create_gdl_parser(epc_parser_list * l)
 {
-    epc_parser_t * gdl_definition_expression = epc_parser_allocate_l(l, "DefinitionExpression");
+    epc_parser_t * gdl_definition_expression = epc_parser_fwd_decl_l(l, "DefinitionExpression");
 
     // Define basic terminal parsers, now wrapped in lexeme where appropriate
     epc_parser_t * raw_gdl_alpha_char = epc_alpha_l(l, "RawAlphaChar");
@@ -18,14 +18,14 @@ create_gdl_parser(epc_parser_list * l)
     epc_parser_t * gdl_minus_char = epc_lexeme_l(l, "MinusChar", raw_gdl_minus_char);
 
     // Define Identifier: (alpha | underscore) (alpha | digit | underscore)*
-    epc_parser_t * gdl_identifier_start_char =
-        epc_or_l(l, "IdentifierStartChar", 2, raw_gdl_alpha_char, raw_gdl_underscore);
-    epc_parser_t * gdl_identifier_cont_char =
-        epc_or_l(l, "IdentifierContChar", 3, raw_gdl_alpha_char, raw_gdl_digit_char, raw_gdl_underscore);
+    epc_parser_t * gdl_identifier_start_char
+        = epc_or_l(l, "IdentifierStartChar", 2, raw_gdl_alpha_char, raw_gdl_underscore);
+    epc_parser_t * gdl_identifier_cont_char
+        = epc_or_l(l, "IdentifierContChar", 3, raw_gdl_alpha_char, raw_gdl_digit_char, raw_gdl_underscore);
     epc_parser_t * gdl_identifier_rest = epc_many_l(l, "IdentifierRest", gdl_identifier_cont_char);
 
-    epc_parser_t * temp_identifier_raw =
-        epc_and_l(l, "Identifier_Raw", 2, gdl_identifier_start_char, gdl_identifier_rest);
+    epc_parser_t * temp_identifier_raw
+        = epc_and_l(l, "Identifier_Raw", 2, gdl_identifier_start_char, gdl_identifier_rest);
     epc_parser_t * gdl_identifier = epc_lexeme_l(l, "Identifier", temp_identifier_raw);
     epc_parser_set_ast_action(gdl_identifier, GDL_AST_ACTION_CREATE_IDENTIFIER_REF);
 
@@ -37,8 +37,8 @@ create_gdl_parser(epc_parser_list * l)
     epc_parser_t * gdl_escaped_newline_str = epc_string_l(l, "EscapedNewlineStr", "\\n");
     epc_parser_t * gdl_escaped_tab_str = epc_string_l(l, "EscapedNewlineStr", "\\t");
     epc_parser_t * gdl_escaped_cr_str = epc_string_l(l, "EscapedNewlineStr", "\\r");
-    epc_parser_t * gdl_any_char_except_quote_backslash_newline_tab_cr =
-        epc_none_of_l(l, "AnyCharExceptQuoteBackslashNewlineTabCR", "\"\\\n\t\r");
+    epc_parser_t * gdl_any_char_except_quote_backslash_newline_tab_cr
+        = epc_none_of_l(l, "AnyCharExceptQuoteBackslashNewlineTabCR", "\"\\\n\t\r");
     epc_parser_t * gdl_string_char_option = epc_or_l(
         l,
         "StringCharOption",
@@ -52,8 +52,8 @@ create_gdl_parser(epc_parser_list * l)
     );
     epc_parser_t * gdl_string_content = epc_many_l(l, "StringContent", gdl_string_char_option);
 
-    epc_parser_t * temp_string_literal_raw =
-        epc_and_l(l, "StringLiteral_Raw", 3, raw_gdl_string_quote, gdl_string_content, raw_gdl_string_quote);
+    epc_parser_t * temp_string_literal_raw
+        = epc_and_l(l, "StringLiteral_Raw", 3, raw_gdl_string_quote, gdl_string_content, raw_gdl_string_quote);
     epc_parser_t * gdl_string_literal = epc_lexeme_l(l, "StringLiteral", temp_string_literal_raw);
     epc_parser_set_ast_action(gdl_string_literal, GDL_AST_ACTION_CREATE_STRING_LITERAL);
 
@@ -65,8 +65,8 @@ create_gdl_parser(epc_parser_list * l)
     epc_parser_t * gdl_escaped_n = epc_string_l(l, "EscapedN", "\\n");
     epc_parser_t * gdl_escaped_t = epc_string_l(l, "EscapedT", "\\t");
     epc_parser_t * gdl_escaped_r = epc_string_l(l, "EscapedR", "\\r");
-    epc_parser_t * gdl_any_char_except_single_quote_backslash =
-        epc_none_of_l(l, "AnyCharExceptSingleQuoteBackslash", "'\\");
+    epc_parser_t * gdl_any_char_except_single_quote_backslash
+        = epc_none_of_l(l, "AnyCharExceptSingleQuoteBackslash", "'\\");
 
     epc_parser_t * gdl_char_literal_content_element = epc_or_l(
         l,
@@ -80,10 +80,10 @@ create_gdl_parser(epc_parser_list * l)
         gdl_any_char_except_single_quote_backslash
     );
 
-    epc_parser_t * temp_char_literal_content =
-        epc_and_l(l, "CharLiteralContent", 1, gdl_char_literal_content_element); // Must be exactly one
-    epc_parser_t * temp_char_literal_raw =
-        epc_and_l(l, "CharLiteral_Raw", 3, raw_gdl_char_quote, temp_char_literal_content, raw_gdl_char_quote);
+    epc_parser_t * temp_char_literal_content
+        = epc_and_l(l, "CharLiteralContent", 1, gdl_char_literal_content_element); // Must be exactly one
+    epc_parser_t * temp_char_literal_raw
+        = epc_and_l(l, "CharLiteral_Raw", 3, raw_gdl_char_quote, temp_char_literal_content, raw_gdl_char_quote);
     epc_parser_t * gdl_char_literal = epc_lexeme_l(l, "CharLiteral", temp_char_literal_raw);
     epc_parser_set_ast_action(gdl_char_literal, GDL_AST_ACTION_CREATE_CHAR_LITERAL);
 
@@ -97,11 +97,11 @@ create_gdl_parser(epc_parser_list * l)
         epc_char_l(l, "EscapeBackslash", '\\'),
         epc_any_l(l, "AnyEscapedChar") // Matches any char after backslash
     );
-    epc_parser_t * gdl_raw_char_unreserved =
-        epc_none_of_l(l, "RawCharNonStructural", "[]\\;=,()"); // Chars that need escaping or are structural
+    epc_parser_t * gdl_raw_char_unreserved
+        = epc_none_of_l(l, "RawCharNonStructural", "[]\\;=,()"); // Chars that need escaping or are structural
 
-    epc_parser_t * gdl_raw_char_content_option =
-        epc_or_l(l, "RawCharContentOption", 2, gdl_raw_char_escape_sequence_content, gdl_raw_char_unreserved);
+    epc_parser_t * gdl_raw_char_content_option
+        = epc_or_l(l, "RawCharContentOption", 2, gdl_raw_char_escape_sequence_content, gdl_raw_char_unreserved);
     epc_parser_t * gdl_raw_char = epc_lexeme_l(l, "RawChar", gdl_raw_char_content_option); // Lexemize the raw character
     epc_parser_set_ast_action(gdl_raw_char, GDL_AST_ACTION_CREATE_RAW_CHAR_LITERAL);
 
@@ -177,8 +177,8 @@ create_gdl_parser(epc_parser_list * l)
     epc_parser_t * terminal_with_arg_parser = epc_or_l(l, "TerminalWithArgKeyword", 1, p_fail_raw);
     epc_parser_set_ast_action(terminal_with_arg_parser, GDL_AST_ACTION_CREATE_KEYWORD);
 
-    epc_parser_t * terminal_parser_raw =
-        epc_or_l(l, "TerminalKeyword_Raw", 2, terminal_no_arg_parser, terminal_with_arg_parser);
+    epc_parser_t * terminal_parser_raw
+        = epc_or_l(l, "TerminalKeyword_Raw", 2, terminal_no_arg_parser, terminal_with_arg_parser);
     epc_parser_t * terminal_keyword = epc_lexeme_l(l, "TerminalKeyword", terminal_no_arg_parser);
 
     epc_parser_t * combinator_parser = epc_or_l(
@@ -203,8 +203,8 @@ create_gdl_parser(epc_parser_list * l)
     );
     epc_parser_set_ast_action(combinator_parser, GDL_AST_ACTION_CREATE_KEYWORD);
 
-    epc_parser_t * keyword =
-        epc_lexeme_l(l, "Keyword", epc_or_l(l, "Keyword", 2, terminal_parser_raw, combinator_parser));
+    epc_parser_t * keyword
+        = epc_lexeme_l(l, "Keyword", epc_or_l(l, "Keyword", 2, terminal_parser_raw, combinator_parser));
 
     // Define Terminal: string_literal | char_literal | keyword | identifier
     // Order matters: keywords should be matched before general identifiers
@@ -215,8 +215,8 @@ create_gdl_parser(epc_parser_list * l)
     epc_parser_t * raw_gdl_lbrack = epc_char_l(l, "RawLBracket", '[');
     epc_parser_t * raw_gdl_rbrack = epc_char_l(l, "RawRBracket", ']');
 
-    epc_parser_t * temp_char_range_raw =
-        epc_and_l(l, "CharRange_Raw", 5, raw_gdl_lbrack, gdl_raw_char, gdl_minus_char, gdl_raw_char, raw_gdl_rbrack);
+    epc_parser_t * temp_char_range_raw
+        = epc_and_l(l, "CharRange_Raw", 5, raw_gdl_lbrack, gdl_raw_char, gdl_minus_char, gdl_raw_char, raw_gdl_rbrack);
     epc_parser_t * gdl_char_range = epc_lexeme_l(l, "CharRange", temp_char_range_raw); // Lexemize the whole range
     epc_parser_set_ast_action(gdl_char_range, GDL_AST_ACTION_CREATE_CHAR_RANGE);
 
@@ -228,8 +228,8 @@ create_gdl_parser(epc_parser_list * l)
     epc_parser_t * raw_gdl_question = epc_char_l(l, "RawQuestion", '?');
     epc_parser_t * gdl_question = epc_lexeme_l(l, "Question", raw_gdl_question);
 
-    epc_parser_t * temp_repetition_operator_raw =
-        epc_or_l(l, "RepetitionOperator_Raw", 3, gdl_star, gdl_plus_char, gdl_question);
+    epc_parser_t * temp_repetition_operator_raw
+        = epc_or_l(l, "RepetitionOperator_Raw", 3, gdl_star, gdl_plus_char, gdl_question);
     epc_parser_t * gdl_repetition_operator = epc_lexeme_l(l, "RepetitionOperator", temp_repetition_operator_raw);
     epc_parser_set_ast_action(gdl_repetition_operator, GDL_AST_ACTION_CREATE_REPETITION_OPERATOR);
 
@@ -273,7 +273,7 @@ create_gdl_parser(epc_parser_list * l)
 
     // A generic argument parser for combinators that take expression arguments
     // An argument can be any definition expression
-    epc_parser_t * gdl_expression_arg = epc_parser_allocate_l(l, "ExpressionArgFwd");
+    epc_parser_t * gdl_expression_arg = epc_parser_fwd_decl_l(l, "ExpressionArgFwd");
 
     /* Function calls (maps to epc_<xxx>_l() parsers) to follow. */
 
@@ -295,12 +295,12 @@ create_gdl_parser(epc_parser_list * l)
     epc_parser_set_ast_action(between_call, GDL_AST_ACTION_CREATE_BETWEEN_CALL);
 
     epc_parser_t * delimited_args = epc_and_l(l, "DelimitedArgs", 3, gdl_expression_arg, gdl_comma, gdl_expression_arg);
-    epc_parser_t * delimited_call =
-        epc_and_l(l, "DelimitedCall", 4, p_delimited, gdl_lparen, delimited_args, gdl_rparen);
+    epc_parser_t * delimited_call
+        = epc_and_l(l, "DelimitedCall", 4, p_delimited, gdl_lparen, delimited_args, gdl_rparen);
     epc_parser_set_ast_action(delimited_call, GDL_AST_ACTION_CREATE_DELIMITED_CALL);
 
-    epc_parser_t * lookahead_call =
-        epc_and_l(l, "LookaheadCall", 4, p_lookahead, gdl_lparen, gdl_expression_arg, gdl_rparen);
+    epc_parser_t * lookahead_call
+        = epc_and_l(l, "LookaheadCall", 4, p_lookahead, gdl_lparen, gdl_expression_arg, gdl_rparen);
     epc_parser_set_ast_action(lookahead_call, GDL_AST_ACTION_CREATE_LOOKAHEAD_CALL);
 
     epc_parser_t * not_call = epc_and_l(l, "NotCall", 4, p_not, gdl_lparen, gdl_expression_arg, gdl_rparen);
@@ -343,8 +343,8 @@ create_gdl_parser(epc_parser_list * l)
     );
 
     // PrimaryExpression: terminal | char_range | combinator_call | '(' definition_expression ')'
-    epc_parser_t * gdl_parenthesized_expression =
-        epc_and_l(l, "ParenthesizedExpression", 3, gdl_lparen, gdl_definition_expression, gdl_rparen);
+    epc_parser_t * gdl_parenthesized_expression
+        = epc_and_l(l, "ParenthesizedExpression", 3, gdl_lparen, gdl_definition_expression, gdl_rparen);
 
     epc_parser_t * gdl_primary_expression = epc_or_l(
         l,
@@ -361,8 +361,8 @@ create_gdl_parser(epc_parser_list * l)
     epc_parser_t * gdl_optional_repetition = epc_optional_l(l, "OptionalRepetition", gdl_repetition_operator);
     epc_parser_set_ast_action(gdl_optional_repetition, GDL_AST_ACTION_CREATE_OPTIONAL);
 
-    epc_parser_t * gdl_expression_factor =
-        epc_and_l(l, "ExpressionFactor", 2, gdl_primary_expression, gdl_optional_repetition);
+    epc_parser_t * gdl_expression_factor
+        = epc_and_l(l, "ExpressionFactor", 2, gdl_primary_expression, gdl_optional_repetition);
     epc_parser_set_ast_action(gdl_expression_factor, GDL_AST_ACTION_CREATE_EXPRESSION_FACTOR);
 
     // ExpressionTerm: expression_factor+ (sequence of factors)
@@ -376,8 +376,8 @@ create_gdl_parser(epc_parser_list * l)
     epc_parser_t * gdl_alternative_part = epc_and_l(l, "AlternativePart", 2, gdl_pipe_char, gdl_expression_term);
     epc_parser_t * gdl_many_alternatives = epc_many_l(l, "ManyAlternatives", gdl_alternative_part);
 
-    epc_parser_t * temp_definition_expression =
-        epc_and_l(l, "DefinitionExpression", 2, gdl_expression_term, gdl_many_alternatives);
+    epc_parser_t * temp_definition_expression
+        = epc_and_l(l, "DefinitionExpression", 2, gdl_expression_term, gdl_many_alternatives);
     epc_parser_set_ast_action(temp_definition_expression, GDL_AST_ACTION_CREATE_ALTERNATIVE);
 
     epc_parser_duplicate(gdl_definition_expression, temp_definition_expression);

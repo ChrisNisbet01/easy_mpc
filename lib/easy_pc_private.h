@@ -3,6 +3,7 @@
 #include <easy_pc/easy_pc.h>
 #include <easy_pc/easy_pc_ast.h> // Include the new AST header
 #include <stdarg.h>
+#include <stdbool.h>
 
 // The Parse Tree Node
 /**
@@ -55,14 +56,37 @@ struct epc_ast_builder_ctx_t
     char error_message[512];
 };
 
-// The Parsing Context (for a single parse operation and its results)
-// This will be internally managed by epc_parse_input
-struct epc_parser_ctx_t
+typedef struct parse_get_input_result_t
 {
-    char const * input_start;
-    size_t input_len;
-    epc_parser_error_t * furthest_error;
-};
+    char const * next_input;
+    size_t available;
+    bool is_eof;
+} parse_get_input_result_t;
+
+EASY_PC_HIDDEN
+parse_get_input_result_t parse_ctx_get_input_at_offset(epc_parser_ctx_t * ctx, size_t input_offset, size_t count);
+
+static inline char const *
+parse_ctx_get_input_start(epc_parser_ctx_t * ctx)
+{
+    parse_get_input_result_t input_result = parse_ctx_get_input_at_offset(ctx, 0, 0);
+    return input_result.next_input;
+}
+
+EASY_PC_HIDDEN
+size_t parse_ctx_get_input_len(epc_parser_ctx_t * const ctx);
+
+EASY_PC_HIDDEN
+ATTR_NONNULL(1)
+size_t parse_ctx_get_offset_from_input(epc_parser_ctx_t * ctx, char const * input_position);
+
+EASY_PC_HIDDEN
+ATTR_NONNULL(1)
+epc_parser_error_t * parse_ctx_get_furthest_error(epc_parser_ctx_t const * ctx);
+
+EASY_PC_HIDDEN
+ATTR_NONNULL(1)
+void parser_ctx_set_furthest_error(epc_parser_ctx_t * ctx, epc_parser_error_t ** replacement);
 
 // Structure for user-managed parser list
 struct epc_parser_list
@@ -112,7 +136,8 @@ typedef struct
 
 typedef enum parser_data_type_t
 {
-    PARSER_DATA_TYPE_OTHER,
+    PARSER_DATA_TYPE_NONE,
+    PARSER_DATA_TYPE_PARSER,
     PARSER_DATA_TYPE_STRING,
     PARSER_DATA_TYPE_PARSER_LIST,
     PARSER_DATA_TYPE_CHAR_RANGE,
@@ -127,7 +152,7 @@ typedef struct parser_data_type_st
     parser_data_type_t data_type;
     union
     {
-        void * other;
+        epc_parser_t * parser;
         char const * string;
         parser_list_t * parser_list;
         char_range_data_t range;
@@ -138,16 +163,20 @@ typedef struct parser_data_type_st
     };
 } parser_data_type_st;
 
+typedef epc_parse_result_t (*parse_fn_t)(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset);
+
 struct epc_parser_t
 {
-    epc_parse_result_t (*parse_fn)(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset);
+    parse_fn_t parse_fn;
 
     // Parser-specific data
     parser_data_type_st data;
 
-    char const * name; /* Must be freed when parser is destroyed. */
-    char const * tag;  /* Unique tag for each parser type. Must _not_ be freed when the parser is destroyed. */
-    char const * expected_value;
+    char const * name; /**< @brief Must be freed when parser is destroyed. */
+    char const * tag;  /**< @brief Unique tag for each parser type. Must _not_ be freed when the parser is destroyed. */
+    char const * expected_value; /**< @brief Optional string to use in preference to name or tag when reporting parse
+                                  * errors. Must _not_ be freed when the parser is destroyed.
+                                  */
 
     epc_ast_semantic_action_t ast_config;
 };
@@ -167,7 +196,7 @@ epc_unparsed_error_result(size_t input_offset, char const * message, char const 
 void epc_parser_result_cleanup(epc_parse_result_t * result);
 
 ATTR_NONNULL(1, 2)
-EASY_PC_HIDDEN
+EASY_PC_API
 epc_cpt_node_t * epc_node_alloc(epc_parser_t * parser, char const * const tag);
 
 EASY_PC_HIDDEN
@@ -185,7 +214,7 @@ epc_parser_error_t * parser_furthest_error_copy(epc_parser_ctx_t * ctx);
 void epc_parser_free(epc_parser_t * parser);
 
 EASY_PC_HIDDEN
-epc_line_col_t epc_calculate_line_and_column(char const * start, char const * current);
+epc_line_col_t epc_calculate_line_and_column(epc_parser_ctx_t * ctx, size_t offset);
 
 EASY_PC_HIDDEN
 char const * epc_parser_get_name(epc_parser_t const * p);

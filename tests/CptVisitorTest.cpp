@@ -37,27 +37,20 @@ test_exit_node(epc_cpt_node_t * node, void * user_data)
 
 TEST_GROUP(CptVisitor)
 {
-    epc_parser_ctx_t * test_parse_ctx = NULL; // Renamed to avoid confusion with grammar_ctx
-
     void setup() override
     {
-        test_parse_ctx = (epc_parser_ctx_t *)calloc(1, sizeof(*test_parse_ctx)); // parser_ctx_t struct itself from heap
-        CHECK_TRUE(test_parse_ctx != NULL);
-        test_parse_ctx->input_start = "test input string"; // Dummy input for error reporting
-        test_parse_ctx->input_len = strlen(test_parse_ctx->input_start);
+
     }
 
     void teardown() override
     {
-        // Destroy the transient parse context for this test's node allocations
-        free(test_parse_ctx);
-        test_parse_ctx = NULL;
+
     }
 };
 
 TEST(CptVisitor, VisitsSimpleNode)
 {
-    epc_cpt_node_t * root = epc_node_alloc(epc_parser_allocate("root"), "ROOT");
+    epc_cpt_node_t * root = epc_node_alloc(epc_parser_fwd_decl("root"), "ROOT");
 
     TestVisitorData visitor_data = {0};
     epc_cpt_visitor_t visitor
@@ -72,11 +65,11 @@ TEST(CptVisitor, VisitsSimpleNode)
 TEST(CptVisitor, VisitsTreeWithChildren)
 {
     // Create a simple tree: ROOT -> CHILD1, CHILD2
-    epc_cpt_node_t * root = epc_node_alloc(epc_parser_allocate("root"), "ROOT");
+    epc_cpt_node_t * root = epc_node_alloc(epc_parser_fwd_decl("root"), "ROOT");
 
-    epc_cpt_node_t * child1 = epc_node_alloc(epc_parser_allocate("child1"), "CHILD1");
+    epc_cpt_node_t * child1 = epc_node_alloc(epc_parser_fwd_decl("child1"), "CHILD1");
 
-    epc_cpt_node_t * child2 = epc_node_alloc(epc_parser_allocate("child2"), "CHILD2");
+    epc_cpt_node_t * child2 = epc_node_alloc(epc_parser_fwd_decl("child2"), "CHILD2");
 
     epc_cpt_node_t * children[2] = {child1, child2};
     root->children = children;
@@ -106,7 +99,7 @@ TEST(CptVisitor, HandlesNullRoot)
 
 TEST(CptVisitor, HandlesNullVisitor)
 {
-    epc_cpt_node_t * root = epc_node_alloc(epc_parser_allocate("root"), "ROOT");
+    epc_cpt_node_t * root = epc_node_alloc(epc_parser_fwd_decl("root"), "ROOT");
 
     epc_cpt_visit_nodes(root, NULL); // Should not crash
     // No assertions needed, just checking for no crash/memory issues
@@ -114,7 +107,7 @@ TEST(CptVisitor, HandlesNullVisitor)
 
 TEST(CptVisitor, HandlesNullCallbacks)
 {
-    epc_cpt_node_t * root = epc_node_alloc(epc_parser_allocate("root"), "ROOT");
+    epc_cpt_node_t * root = epc_node_alloc(epc_parser_fwd_decl("root"), "ROOT");
 
     TestVisitorData visitor_data = {0};
     epc_cpt_visitor_t visitor_no_enter = {.enter_node = NULL, .exit_node = test_exit_node, .user_data = &visitor_data};

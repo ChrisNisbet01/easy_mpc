@@ -5,6 +5,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+// The Parsing Context (for a single parse operation and its results)
+// This will be internally managed by epc_parse_input
+struct epc_parser_ctx_t
+{
+    char const * input_start;
+    size_t input_len;
+    epc_parser_error_t * furthest_error;
+};
+
 // --- CPT Visitor ---
 static void
 pt_visit_recursive(epc_cpt_node_t * node, epc_cpt_visitor_t * visitor)
@@ -57,6 +66,65 @@ internal_create_parse_ctx(char const * input_start)
     return ctx;
 }
 
+EASY_PC_HIDDEN
+parse_get_input_result_t
+parse_ctx_get_input_at_offset(epc_parser_ctx_t * const ctx, size_t const input_offset, size_t const count)
+{
+    if (ctx == NULL || ctx->input_start == NULL || input_offset + count > ctx->input_len)
+    {
+        return (parse_get_input_result_t){
+            .is_eof = true,
+        };
+    }
+
+    return (parse_get_input_result_t){
+        .next_input = &ctx->input_start[input_offset],
+        .available = ctx->input_len - input_offset,
+    };
+}
+
+EASY_PC_HIDDEN
+size_t
+parse_ctx_get_input_len(epc_parser_ctx_t * const ctx)
+{
+    if (ctx == NULL || ctx->input_start == NULL)
+    {
+        return 0;
+    }
+    return ctx->input_len;
+}
+
+EASY_PC_HIDDEN
+ATTR_NONNULL(1)
+size_t
+parse_ctx_get_offset_from_input(epc_parser_ctx_t * const ctx, char const * const input_position)
+{
+    if (ctx->input_start == NULL || input_position < ctx->input_start
+        || input_position > ctx->input_start + ctx->input_len)
+    {
+        return 0;
+    }
+    return (size_t)(input_position - ctx->input_start);
+}
+
+EASY_PC_HIDDEN
+ATTR_NONNULL(1)
+epc_parser_error_t *
+parse_ctx_get_furthest_error(epc_parser_ctx_t const * ctx)
+{
+    return ctx->furthest_error;
+}
+
+EASY_PC_HIDDEN
+ATTR_NONNULL(1)
+void
+parser_ctx_set_furthest_error(epc_parser_ctx_t * ctx, epc_parser_error_t ** replacement)
+{
+    epc_parser_error_free(ctx->furthest_error);
+    ctx->furthest_error = *replacement;
+    *replacement = NULL;
+}
+
 // Internal parser_ctx_t destruction (for parse results)
 static void
 internal_destroy_parse_ctx(epc_parser_ctx_t * ctx)
@@ -73,48 +141,48 @@ internal_destroy_parse_ctx(epc_parser_ctx_t * ctx)
 EASY_PC_API epc_parse_session_t
 epc_parse_input(epc_parser_t * top_parser, char const * input_string)
 {
-    epc_parse_session_t session_result = {0};
+    epc_parse_session_t session = {0};
 
     epc_parser_ctx_t * ctx = internal_create_parse_ctx(input_string);
     if (!ctx)
     {
-        session_result.result
+        session.result
             = epc_unparsed_error_result(0, "Failed to create internal parse context.", "valid parse context", "NULL");
-        return session_result;
+        return session;
     }
-    session_result.internal_parse_ctx = ctx;
+    session.internal_parse_ctx = ctx;
 
     if (top_parser == NULL)
     {
-        session_result.result = epc_unparsed_error_result(
+        session.result = epc_unparsed_error_result(
             0, "Top parser not set for grammar", "grammar with a top parser", "NULL top_parser"
         );
-        return session_result;
+        return session;
     }
 
     if (input_string == NULL)
     {
-        session_result.result = epc_unparsed_error_result(0, "Input string is NULL", "non-NULL input string", "NULL");
-        return session_result;
+        session.result = epc_unparsed_error_result(0, "Input string is NULL", "non-NULL input string", "NULL");
+        return session;
     }
 
-    session_result.result = top_parser->parse_fn(top_parser, ctx, 0);
+    session.result = top_parser->parse_fn(top_parser, ctx, 0);
 
     // After parsing, if an error occurred, check if the tracked "furthest_error"
     // is more informative than the one that caused the final failure.
-    if (session_result.result.is_error)
+    if (session.result.is_error)
     {
         epc_parser_error_t * furthest_error = parser_furthest_error_copy(ctx);
 
         // A `furthest_error` is more informative if it parsed further into the input string.
         if (furthest_error != NULL
-            && (session_result.result.data.error == NULL
-                || furthest_error->input_position > session_result.result.data.error->input_position))
+            && (session.result.data.error == NULL
+                || furthest_error->input_position > session.result.data.error->input_position))
         {
             // If it is, replace the result's error with the furthest one.
-            epc_parser_result_cleanup(&session_result.result);
-            session_result.result.is_error = true;
-            session_result.result.data.error = furthest_error;
+            epc_parser_result_cleanup(&session.result);
+            session.result.is_error = true;
+            session.result.data.error = furthest_error;
         }
         else
         {
@@ -123,7 +191,7 @@ epc_parse_input(epc_parser_t * top_parser, char const * input_string)
         }
     }
 
-    return session_result;
+    return session;
 }
 
 EASY_PC_API void
@@ -143,8 +211,37 @@ epc_parse_session_destroy(epc_parse_session_t * session)
     }
 }
 
+EASY_PC_API
+void
+epc_parse_session_print_cpt(FILE * fp, epc_parse_session_t const * session)
+{
+    if (session == NULL)
+    {
+        fprintf(fp, "NULL session\n");
+        return;
+    }
+    if (session->result.is_error)
+    {
+        epc_parser_error_t * err = session->result.data.error;
+        fprintf(fp, "Parse Error: %s\n", err->message);
+        fprintf(fp, "At line %zu, col %zu\n", err->position.line + 1, err->position.col + 1);
+        fprintf(fp, "Expected: %s\n", err->expected ? err->expected : "unknown");
+        fprintf(fp, "Found: %s\n", err->found ? err->found : "unknown");
+    }
+    else
+    {
+        fprintf(fp, "Parsing successful!\n");
+        char * cpt_str = epc_cpt_to_string(session->internal_parse_ctx, session->result.data.success);
+        if (cpt_str)
+        {
+            fprintf(fp, "Concrete Parse Tree (CPT):\n%s\n", cpt_str);
+            free(cpt_str);
+        }
+    }
+}
+
 ATTR_NONNULL(1, 2)
-EASY_PC_HIDDEN
+EASY_PC_API
 epc_cpt_node_t *
 epc_node_alloc(epc_parser_t * parser, char const * tag)
 {

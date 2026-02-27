@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 
 // For symbol visibility control
 #if defined _WIN32 || defined __CYGWIN__
@@ -1039,12 +1040,11 @@ epc_c_comment_l(epc_parser_list * list, char const * name)
  * @param name An optional name for the parser, primarily for debugging and CPT visualization.
  * @return A pointer to the newly allocated and initialized `parser_t` instance, or NULL on error.
  */
-ATTR_NONNULL(1)
-EASY_PC_API epc_parser_t * epc_parser_allocate(char const * name);
+EASY_PC_API epc_parser_t * epc_parser_fwd_decl(char const * name);
 
 /**
  * @brief Allocates and initializes a new parser object within the grammar's memory context.
- *        This is a convenience wrapper for `epc_parser_allocate()` that automatically adds the created
+ *        This is a convenience wrapper for `epc_parser_fwd_decl()` that automatically adds the created
  *        parser to the provided `epc_parser_list`.
  *
  * This function is typically used to create a forward reference to a parser that is needed to
@@ -1058,9 +1058,9 @@ EASY_PC_API epc_parser_t * epc_parser_allocate(char const * name);
  * @return A pointer to the newly allocated and initialized `parser_t` instance, or NULL on error.
  */
 static inline epc_parser_t *
-epc_parser_allocate_l(epc_parser_list * list, char const * name)
+epc_parser_fwd_decl_l(epc_parser_list * list, char const * name)
 {
-    return epc_parser_list_add(list, epc_parser_allocate(name));
+    return epc_parser_list_add(list, epc_parser_fwd_decl(name));
 }
 
 /**
@@ -1114,6 +1114,9 @@ EASY_PC_API epc_parse_session_t epc_parse_input(epc_parser_t * top_parser, char 
  * @param session A pointer to the `easy_pc_parse_session_t` to be destroyed.
  */
 EASY_PC_API void epc_parse_session_destroy(epc_parse_session_t * session);
+
+EASY_PC_API
+void epc_parse_session_print_cpt(FILE * fp, epc_parse_session_t const * session);
 
 /**
  * @brief Retrieves the semantically relevant content from a CPT node.
@@ -1170,11 +1173,12 @@ EASY_PC_API size_t epc_cpt_node_get_len(epc_cpt_node_t * node);
  * the CPT for debugging or visualization purposes. The returned string
  * must be freed by the caller.
  *
+ * @param parse_ctx The parser context associated with the CPT.
  * @param node The root `pt_node_t` of the CPT (or any sub-tree) to print.
  * @return A dynamically allocated string containing the CPT representation,
  *         or NULL on allocation failure. The caller is responsible for freeing this string.
  */
-EASY_PC_API char * epc_cpt_to_string(epc_cpt_node_t * node);
+EASY_PC_API char * epc_cpt_to_string(epc_parser_ctx_t * parse_ctx, epc_cpt_node_t * node);
 
 /**
  * @brief Frees the supplied list of parsers.

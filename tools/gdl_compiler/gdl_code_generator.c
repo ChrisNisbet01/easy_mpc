@@ -9,7 +9,7 @@
 typedef struct gdl_rule_info_t
 {
     char * name;                    // Name of the rule
-    bool needs_forward_declaration; // True if it needs epc_parser_allocate_l
+    bool needs_forward_declaration; // True if it needs epc_parser_fwd_decl_l
     gdl_ast_node_t * ast_node;      // Pointer to the actual rule definition AST node
     struct gdl_rule_info_t * next;  // For linked list
 } gdl_rule_info_t;
@@ -161,8 +161,8 @@ gdl_collect_semantic_actions(gdl_ast_node_t * ast_root)
         gdl_ast_node_t * rule_def = current_rule_node->item;
         if (rule_def->type == GDL_AST_NODE_TYPE_RULE_DEFINITION)
         {
-            if (rule_def->data.rule_def.semantic_action != NULL &&
-                rule_def->data.rule_def.semantic_action->data.semantic_action.action_name != NULL)
+            if (rule_def->data.rule_def.semantic_action != NULL
+                && rule_def->data.rule_def.semantic_action->data.semantic_action.action_name != NULL)
             {
                 add_unique_action_name(
                     &action_names_head, rule_def->data.rule_def.semantic_action->data.semantic_action.action_name
@@ -550,7 +550,7 @@ gdl_generate_c_code(gdl_ast_node_t * ast_root, char const * base_name, char cons
             char * pascal_rule_name = to_pascal_case(current_rule_info->name);
             fprintf(
                 source_file,
-                "    epc_parser_t * %s = epc_parser_allocate_l(list, \"%s\");\n",
+                "    epc_parser_t * %s = epc_parser_fwd_decl_l(list, \"%s\");\n",
                 pascal_rule_name,
                 current_rule_info->name
             );
@@ -602,8 +602,8 @@ generate_rule_definition_code(
     char * pascal_rule_name = to_pascal_case(rule_node->data.rule_def.name);
     fprintf(source_file, "%*s// Rule: %s\n", indent_level * 4, "", rule_node->data.rule_def.name);
 
-    gdl_rule_info_t * current_rule_info =
-        gdl_rule_list_find((gdl_rule_list_t *)rule_list, rule_node->data.rule_def.name);
+    gdl_rule_info_t * current_rule_info
+        = gdl_rule_list_find((gdl_rule_list_t *)rule_list, rule_node->data.rule_def.name);
     if (current_rule_info == NULL)
     {
         fprintf(stderr, "Error: Rule '%s' not found in dependency list.\n", rule_node->data.rule_def.name);
@@ -625,11 +625,11 @@ generate_rule_definition_code(
         fprintf(source_file, ";\n");
 
         // Apply semantic action if present
-        if (rule_node->data.rule_def.semantic_action != NULL &&
-            rule_node->data.rule_def.semantic_action->data.semantic_action.action_name != NULL)
+        if (rule_node->data.rule_def.semantic_action != NULL
+            && rule_node->data.rule_def.semantic_action->data.semantic_action.action_name != NULL)
         {
-            char * upper_case_action =
-                to_upper_case(rule_node->data.rule_def.semantic_action->data.semantic_action.action_name);
+            char * upper_case_action
+                = to_upper_case(rule_node->data.rule_def.semantic_action->data.semantic_action.action_name);
             fprintf(
                 source_file,
                 "%*sepc_parser_set_ast_action(%s, %s);\n",
@@ -657,11 +657,11 @@ generate_rule_definition_code(
         fprintf(source_file, ";\n"); // End of definition assignment
 
         // Apply semantic action if present
-        if (rule_node->data.rule_def.semantic_action != NULL &&
-            rule_node->data.rule_def.semantic_action->data.semantic_action.action_name != NULL)
+        if (rule_node->data.rule_def.semantic_action != NULL
+            && rule_node->data.rule_def.semantic_action->data.semantic_action.action_name != NULL)
         {
-            char * upper_case_action =
-                to_upper_case(rule_node->data.rule_def.semantic_action->data.semantic_action.action_name);
+            char * upper_case_action
+                = to_upper_case(rule_node->data.rule_def.semantic_action->data.semantic_action.action_name);
             fprintf(
                 source_file,
                 "%*sepc_parser_set_ast_action(%s_def, %s);\n",
@@ -1132,8 +1132,8 @@ generate_expression_code(
             return NULL;
         }
 
-        char const * parser_name =
-            (expression_node->type == GDL_AST_NODE_TYPE_COMBINATOR_NONEOF) ? "none_of" : "one_of";
+        char const * parser_name
+            = (expression_node->type == GDL_AST_NODE_TYPE_COMBINATOR_NONEOF) ? "none_of" : "one_of";
         fprintf(source_file, "epc_%s_l(list, %s%s%s, \"%s\")", parser_name, q, expr_name, q, args_str);
 
         break;

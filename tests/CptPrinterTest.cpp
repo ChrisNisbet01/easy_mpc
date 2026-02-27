@@ -9,61 +9,55 @@ extern "C" {
 #include <string.h> // For strlen, strcmp
 }
 
-TEST_GROUP(CptPrinter){
-    void setup() override{}
-
-    void teardown() override{}
-
-    // Helper to create a transient parser_ctx_t for test cases
-    epc_parser_ctx_t *
-    create_transient_parse_ctx(char const * input_str){
-        epc_parser_ctx_t * ctx = (epc_parser_ctx_t *)calloc(1, sizeof(*ctx));
-CHECK_TRUE(ctx != NULL);
-ctx->input_start = input_str;
-ctx->input_len = ctx->input_start != NULL ? strlen(ctx->input_start) : 0;
-return ctx;
-}
-
-// Helper to destroy a transient parser_ctx_t
-void
-destroy_transient_parse_ctx(epc_parser_ctx_t * ctx)
+TEST_GROUP(CptPrinter)
 {
-    free(ctx); // Free the parser_ctx_t struct itself
-}
+    epc_parse_session_t session = {0};
 
-// Helper to parse and print
-char *
-parse_and_print(epc_parser_t * parser, char const * input_str)
-{
-    epc_parser_ctx_t * parse_ctx = create_transient_parse_ctx(input_str);
-    CHECK_TRUE(parse_ctx != NULL);
-
-    epc_parse_result_t result = parser->parse_fn(parser, parse_ctx, 0);
-    if (result.is_error)
+    void setup() override
     {
-        std::cerr << "Parse Error: " << (result.data.error ? result.data.error->message : "Unknown error") << " at '"
-                  << (result.data.error && result.data.error->input_position ? result.data.error->input_position
-                                                                             : "NULL")
-                  << "', expected '"
-                  << (result.data.error && result.data.error->expected ? result.data.error->expected : "N/A")
-                  << "', found '" << (result.data.error && result.data.error->found ? result.data.error->found : "N/A")
-                  << "'" << std::endl;
-        destroy_transient_parse_ctx(parse_ctx);
-        return NULL;
-    }
-    char * printed_cpt = epc_cpt_to_string(result.data.success);
-
-    char * copied_cpt = NULL;
-    if (printed_cpt != NULL)
-    {
-        copied_cpt = strdup(printed_cpt);
+        session = (epc_parse_session_t){0}; // Reset session before each test
     }
 
-    destroy_transient_parse_ctx(parse_ctx);
-    return copied_cpt; // Caller is responsible for free(copied_cpt)
-}
-}
-;
+    epc_parse_result_t parse(epc_parser_t * parser, char const * input)
+    {
+        session = epc_parse_input(parser, input);
+        return session.result;
+    }
+
+    void teardown() override
+    {
+        epc_parse_session_destroy(&session);
+    }
+
+    // Helper to parse and print
+    char * parse_and_print(epc_parser_t * parser, char const * input_str)
+    {
+        epc_parse_result_t result = parse(parser, input_str);
+
+        if (result.is_error)
+        {
+            std::cerr << "Parse Error: " << (result.data.error ? result.data.error->message : "Unknown error")
+                      << " at '"
+                      << (result.data.error && result.data.error->input_position ? result.data.error->input_position
+                                                                                 : "NULL")
+                      << "', expected '"
+                      << (result.data.error && result.data.error->expected ? result.data.error->expected : "N/A")
+                      << "', found '"
+                      << (result.data.error && result.data.error->found ? result.data.error->found : "N/A") << "'"
+                      << std::endl;
+            return NULL;
+        }
+        char * printed_cpt = epc_cpt_to_string(session.internal_parse_ctx, result.data.success);
+
+        char * copied_cpt = NULL;
+        if (printed_cpt != NULL)
+        {
+            copied_cpt = strdup(printed_cpt);
+        }
+
+        return copied_cpt; // Caller is responsible for free(copied_cpt)
+    }
+};
 
 TEST(CptPrinter, PrintsSingleCharNode)
 {
