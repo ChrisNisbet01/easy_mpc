@@ -248,7 +248,7 @@ TEST(TerminalParsers, PAndFailsIfFirstChildFails)
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
     STRCMP_EQUAL("Unexpected character", result.data.error->message);
-    CHECK_TRUE(result.data.error->input_position == input_str); // Error at 'a'
+    STRCMP_EQUAL(input_str, result.data.error->input_position);
     STRCMP_EQUAL("x", result.data.error->expected);
     STRCMP_EQUAL("a", result.data.error->found);
 }
@@ -266,7 +266,7 @@ TEST(TerminalParsers, PAndFailsIfMiddleChildFails)
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
     STRCMP_EQUAL("Unexpected character", result.data.error->message);
-    CHECK_TRUE(result.data.error->input_position == (input_str + 1)); // Error at 'b'
+    STRCMP_EQUAL(input_str + 1, result.data.error->input_position);
     STRCMP_EQUAL("x", result.data.error->expected);
     STRCMP_EQUAL("b", result.data.error->found);
 }
@@ -281,7 +281,7 @@ TEST(TerminalParsers, PAndFailsWithEmptySequenceList)
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
     STRCMP_EQUAL("No parsers in 'and' sequence", result.data.error->message);
-    CHECK_TRUE(result.data.error->input_position == input_str);
+    STRCMP_EQUAL(input_str, result.data.error->input_position);
     STRCMP_EQUAL("and", result.data.error->expected);
     STRCMP_EQUAL("N/A", result.data.error->found);
 }
@@ -334,7 +334,7 @@ TEST(TerminalParsers, PSpaceDoesNotMatchNonWhitespace)
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
     STRCMP_EQUAL("Unexpected character", result.data.error->message);
-    CHECK_TRUE(result.data.error->input_position == input_str);
+    STRCMP_EQUAL(input_str, result.data.error->input_position);
     STRCMP_EQUAL("whitespace", result.data.error->expected);
     STRCMP_EQUAL("a", result.data.error->found);
 }
@@ -364,7 +364,7 @@ TEST(TerminalParsers, PSkipSkipsMultipleSpaces)
     CHECK_TRUE(result.data.success != NULL);
     STRCMP_EQUAL("skip", result.data.success->tag);
     POINTERS_EQUAL(result.data.success->name, NULL); // Name should be NULL since we didn't set it
-    CHECK_TRUE(result.data.success->content == input_str);
+    STRCMP_EQUAL(input_str, result.data.success->content);
     LONGS_EQUAL(3, result.data.success->len); // Skipped 3 spaces
 }
 
@@ -380,7 +380,7 @@ TEST(TerminalParsers, PSkipSkipsZeroSpaces)
     CHECK_TRUE(result.data.success != NULL);
     STRCMP_EQUAL("skip", result.data.success->tag);
     POINTERS_EQUAL(result.data.success->name, NULL); // Name should be NULL since we didn't set it
-    CHECK_TRUE(result.data.success->content == input_str);
+    STRCMP_EQUAL(input_str, result.data.success->content);
     LONGS_EQUAL(0, result.data.success->len); // Skipped 0 spaces
 }
 
@@ -395,9 +395,9 @@ TEST(TerminalParsers, PSkipSkipsMixedWhitespace)
     CHECK_FALSE(result.is_error);
     CHECK_TRUE(result.data.success != NULL);
     STRCMP_EQUAL("skip", result.data.success->tag);
-    POINTERS_EQUAL(result.data.success->name, NULL); // Name should be NULL since we didn't set it
-    CHECK_TRUE(result.data.success->content == input_str);
-    LONGS_EQUAL(5, result.data.success->len); // Skipped 5 chars
+    POINTERS_EQUAL(result.data.success->name, NULL);           // Name should be NULL since we didn't set it
+    STRNCMP_EQUAL(input_str, result.data.success->content, 5); // Should be at the start of the input string
+    LONGS_EQUAL(5, result.data.success->len);                  // Skipped 5 chars
 }
 
 TEST(TerminalParsers, PSkipHandlesNullChildParser)
@@ -410,7 +410,7 @@ TEST(TerminalParsers, PSkipHandlesNullChildParser)
     CHECK_TRUE(result.is_error);
     CHECK_TRUE(result.data.error != NULL);
     STRCMP_EQUAL("p_skip received NULL child parser", result.data.error->message);
-    CHECK_TRUE(result.data.error->input_position == input_str);
+    STRCMP_EQUAL(input_str, result.data.error->input_position);
     STRCMP_EQUAL("skip", result.data.error->expected);
     STRCMP_EQUAL("NULL", result.data.error->found);
 }

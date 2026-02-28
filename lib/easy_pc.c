@@ -1,9 +1,14 @@
 #include "easy_pc_private.h"
 #include "parsers.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
+#define MAX_INPUT_SIZE (100 * 1024 * 1024) /* 100 MB */
 
 // The Parsing Context (for a single parse operation and its results)
 // This will be internally managed by epc_parse_input
@@ -11,6 +16,7 @@ struct epc_parser_ctx_t
 {
     char const * input_start;
     size_t input_len;
+    size_t mmap_total_len;
     epc_parser_error_t * furthest_error;
 };
 
@@ -52,7 +58,7 @@ epc_cpt_visit_nodes(epc_cpt_node_t * root, epc_cpt_visitor_t * visitor)
 
 // Internal parser_ctx_t creation (for parse results)
 static epc_parser_ctx_t *
-internal_create_parse_ctx(char const * input_start)
+internal_create_parse_ctx_from_input(char const * input_start)
 {
     epc_parser_ctx_t * ctx = calloc(1, sizeof(*ctx));
     if (!ctx)
@@ -60,8 +66,43 @@ internal_create_parse_ctx(char const * input_start)
         return NULL;
     }
 
-    ctx->input_start = input_start;
-    ctx->input_len = ctx->input_start != NULL ? strlen(ctx->input_start) : 0;
+    long const page_size = sysconf(_SC_PAGESIZE);
+    ctx->mmap_total_len = MAX_INPUT_SIZE + page_size;
+
+    /*
+     * Allocate 100MB + 1 guard page.
+     * MAP_ANONYMOUS ensures no physical memory is used until written to.
+     */
+    void * mem = mmap(NULL, ctx->mmap_total_len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+    if (mem == MAP_FAILED)
+    {
+        free(ctx);
+        return NULL;
+    }
+
+    /* Set the guard page at the very end of the 100MB range. */
+    if (mprotect((char *)mem + MAX_INPUT_SIZE, page_size, PROT_NONE) != 0)
+    {
+        munmap(mem, ctx->mmap_total_len);
+        free(ctx);
+        return NULL;
+    }
+
+    ctx->input_start = mem;
+
+    if (input_start != NULL)
+    {
+        ctx->input_len = strlen(input_start);
+        if (ctx->input_len + 1 > MAX_INPUT_SIZE)
+        {
+            /* Input exceeds our virtual buffer. */
+            munmap(mem, ctx->mmap_total_len);
+            free(ctx);
+            return NULL;
+        }
+        memcpy(mem, input_start, ctx->input_len + 1); /* +1 to include null terminator */
+    }
 
     return ctx;
 }
@@ -134,6 +175,11 @@ internal_destroy_parse_ctx(epc_parser_ctx_t * ctx)
         return;
     }
 
+    if (ctx->input_start != NULL && ctx->mmap_total_len > 0)
+    {
+        munmap((void *)ctx->input_start, ctx->mmap_total_len);
+    }
+
     epc_parser_error_free(ctx->furthest_error);
     free(ctx);
 }
@@ -143,7 +189,7 @@ epc_parse_input(epc_parser_t * top_parser, char const * input_string)
 {
     epc_parse_session_t session = {0};
 
-    epc_parser_ctx_t * ctx = internal_create_parse_ctx(input_string);
+    epc_parser_ctx_t * ctx = internal_create_parse_ctx_from_input(input_string);
     if (!ctx)
     {
         session.result
