@@ -8,7 +8,14 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#define MAX_INPUT_SIZE (100 * 1024 * 1024) /* 100 MB */
+#define MAX_MMAP_INPUT_SIZE (100 * 1024 * 1024) /* 100 MB */
+
+typedef struct mmap_input_buffer_t
+{
+    char * buffer;     /**< Pointer to the start of the memory-mapped input buffer. */
+    size_t total_size; /**< Total size of the memory-mapped region (including guard page). */
+    size_t input_size; /**< Actual size of the input string stored in the buffer. */
+} mmap_input_buffer_t;
 
 // The Parsing Context (for a single parse operation and its results)
 // This will be internally managed by epc_parse_input
@@ -16,7 +23,8 @@ struct epc_parser_ctx_t
 {
     char const * input_start;
     size_t input_len;
-    size_t mmap_total_len;
+
+    mmap_input_buffer_t mmap_buffer; /* Internal buffer management for input string, using mmap for large inputs. */
     epc_parser_error_t * furthest_error;
 };
 
@@ -56,55 +64,143 @@ epc_cpt_visit_nodes(epc_cpt_node_t * root, epc_cpt_visitor_t * visitor)
 
 // --- Top-Level API ---
 
-// Internal parser_ctx_t creation (for parse results)
-static epc_parser_ctx_t *
-internal_create_parse_ctx_from_input(char const * input_start)
+mmap_input_buffer_t
+create_mmap_input_buffer(size_t input_size)
 {
-    epc_parser_ctx_t * ctx = calloc(1, sizeof(*ctx));
-    if (!ctx)
+    mmap_input_buffer_t buffer = {0};
+
+    if (input_size > MAX_MMAP_INPUT_SIZE)
     {
-        return NULL;
+        return buffer; // Return empty buffer if input size exceeds our limit
     }
 
     long const page_size = sysconf(_SC_PAGESIZE);
-    ctx->mmap_total_len = MAX_INPUT_SIZE + page_size;
+    buffer.total_size = MAX_MMAP_INPUT_SIZE + page_size;
 
     /*
      * Allocate 100MB + 1 guard page.
      * MAP_ANONYMOUS ensures no physical memory is used until written to.
      */
-    void * mem = mmap(NULL, ctx->mmap_total_len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    void * mem = mmap(NULL, buffer.total_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
     if (mem == MAP_FAILED)
     {
-        free(ctx);
-        return NULL;
+        return (mmap_input_buffer_t){0}; // Return empty buffer on failure
     }
 
     /* Set the guard page at the very end of the 100MB range. */
-    if (mprotect((char *)mem + MAX_INPUT_SIZE, page_size, PROT_NONE) != 0)
+    if (mprotect((char *)mem + MAX_MMAP_INPUT_SIZE, page_size, PROT_NONE) != 0)
     {
-        munmap(mem, ctx->mmap_total_len);
-        free(ctx);
+        munmap(mem, buffer.total_size);
+        return (mmap_input_buffer_t){0}; // Return empty buffer on failure
+    }
+
+    buffer.buffer = mem;
+    buffer.input_size = input_size;
+
+    return buffer;
+}
+
+// Internal parser_ctx_t creation (for parse results)
+static epc_parser_ctx_t *
+internal_create_parse_ctx_from_string(char const * input_start)
+{
+    size_t input_len = input_start == NULL ? 0 : strlen(input_start);
+
+    mmap_input_buffer_t buffer = create_mmap_input_buffer(input_len + 1);
+
+    if (buffer.buffer == NULL)
+    {
         return NULL;
     }
 
-    ctx->input_start = mem;
+    epc_parser_ctx_t * ctx = calloc(1, sizeof(*ctx));
+    if (ctx == NULL)
+    {
+        munmap(buffer.buffer, buffer.total_size);
+        return NULL;
+    }
 
     if (input_start != NULL)
     {
-        ctx->input_len = strlen(input_start);
-        if (ctx->input_len + 1 > MAX_INPUT_SIZE)
-        {
-            /* Input exceeds our virtual buffer. */
-            munmap(mem, ctx->mmap_total_len);
-            free(ctx);
-            return NULL;
-        }
-        memcpy(mem, input_start, ctx->input_len + 1); /* +1 to include null terminator */
+        memcpy(buffer.buffer, input_start, input_len + 1); /* +1 to include null terminator */
+    }
+    else
+    {
+        buffer.buffer[0] = '\0'; /* Ensure null termination for NULL input */
     }
 
+    ctx->mmap_buffer = buffer;
+    ctx->input_start = ctx->mmap_buffer.buffer;
+    ctx->input_len = input_len;
+
     return ctx;
+}
+
+static epc_parser_ctx_t *
+internal_create_parse_ctx_from_fp(FILE * fp)
+{
+    if (fp == NULL)
+    {
+        return NULL;
+    }
+
+    // Move to end of file to determine size
+    if (fseek(fp, 0, SEEK_END) != 0)
+    {
+        return NULL;
+    }
+    long file_size = ftell(fp);
+    if (file_size < 0)
+    {
+        return NULL;
+    }
+    rewind(fp);
+
+    mmap_input_buffer_t buffer = create_mmap_input_buffer((size_t)file_size + 1);
+    if (buffer.buffer == NULL)
+    {
+        return NULL;
+    }
+
+    size_t total_read = fread(buffer.buffer, 1, (size_t)file_size, fp);
+    if (total_read != (size_t)file_size)
+    {
+        munmap(buffer.buffer, buffer.total_size);
+        return NULL;
+    }
+    buffer.buffer[total_read] = '\0'; // Null-terminate the buffer
+
+    epc_parser_ctx_t * ctx = calloc(1, sizeof(*ctx));
+    if (!ctx)
+    {
+        munmap(buffer.buffer, buffer.total_size);
+        return NULL;
+    }
+
+    ctx->mmap_buffer = buffer;
+    ctx->input_start = buffer.buffer;
+    ctx->input_len = total_read;
+
+    return ctx;
+}
+
+// Internal parser_ctx_t destruction (for parse results)
+static void
+internal_destroy_parse_ctx(epc_parser_ctx_t * ctx)
+{
+    if (ctx == NULL)
+    {
+        return;
+    }
+
+    epc_parser_error_free(ctx->furthest_error);
+    if (ctx->mmap_buffer.buffer != NULL)
+    {
+        munmap((void *)ctx->mmap_buffer.buffer, ctx->mmap_buffer.total_size);
+    }
+
+    free(ctx);
 }
 
 EASY_PC_HIDDEN
@@ -166,37 +262,10 @@ parser_ctx_set_furthest_error(epc_parser_ctx_t * ctx, epc_parser_error_t ** repl
     *replacement = NULL;
 }
 
-// Internal parser_ctx_t destruction (for parse results)
-static void
-internal_destroy_parse_ctx(epc_parser_ctx_t * ctx)
-{
-    if (ctx == NULL)
-    {
-        return;
-    }
-
-    if (ctx->input_start != NULL && ctx->mmap_total_len > 0)
-    {
-        munmap((void *)ctx->input_start, ctx->mmap_total_len);
-    }
-
-    epc_parser_error_free(ctx->furthest_error);
-    free(ctx);
-}
-
-EASY_PC_API epc_parse_session_t
-epc_parse_input(epc_parser_t * top_parser, char const * input_string)
+EASY_PC_HIDDEN epc_parse_session_t
+epc_parse_input(epc_parser_t * top_parser, epc_parse_input_t input)
 {
     epc_parse_session_t session = {0};
-
-    epc_parser_ctx_t * ctx = internal_create_parse_ctx_from_input(input_string);
-    if (!ctx)
-    {
-        session.result
-            = epc_unparsed_error_result(0, "Failed to create internal parse context.", "valid parse context", "NULL");
-        return session;
-    }
-    session.internal_parse_ctx = ctx;
 
     if (top_parser == NULL)
     {
@@ -206,11 +275,59 @@ epc_parse_input(epc_parser_t * top_parser, char const * input_string)
         return session;
     }
 
-    if (input_string == NULL)
+    epc_parser_ctx_t * ctx = NULL;
+
+    switch (input.type)
     {
-        session.result = epc_unparsed_error_result(0, "Input string is NULL", "non-NULL input string", "NULL");
+    case EPC_PARSE_TYPE_STRING:
+        if (input.input_string == NULL)
+        {
+            session.result = epc_unparsed_error_result(0, "Input string is NULL", "non-NULL input string", "NULL");
+            return session;
+        }
+        ctx = internal_create_parse_ctx_from_string(input.input_string);
+        break;
+
+    case EPC_PARSE_TYPE_FILE:
+        if (input.fp == NULL)
+        {
+            session.result = epc_unparsed_error_result(0, "Input file is NULL", "non-NULL input file", "NULL");
+            return session;
+        }
+        ctx = internal_create_parse_ctx_from_fp(input.fp);
+        break;
+
+    case EPC_PARSE_TYPE_FILENAME:
+        if (input.filename == NULL)
+        {
+            session.result = epc_unparsed_error_result(0, "Input filename is NULL", "non-NULL input filename", "NULL");
+            return session;
+        }
+        FILE * fp = fopen(input.filename, "r");
+        if (fp == NULL)
+        {
+            char error_message[256];
+            snprintf(error_message, sizeof(error_message), "Failed to open file '%s': %s", input.filename, strerror(errno));
+            session.result = epc_unparsed_error_result(0, error_message, "file that can be opened", "unopenable file");
+            return session;
+        }
+        ctx = internal_create_parse_ctx_from_fp(fopen(input.filename, "r"));
+        fclose(fp);
+
+        break;
+
+    default:
+        session.result = epc_unparsed_error_result(0, "Invalid input type", "valid input type", "invalid input type");
         return session;
     }
+
+    if (ctx == NULL)
+    {
+        session.result
+            = epc_unparsed_error_result(0, "Failed to create parse context.", "valid parse context", "NULL");
+        return session;
+    }
+    session.internal_parse_ctx = ctx;
 
     session.result = top_parser->parse_fn(top_parser, ctx, 0);
 
@@ -238,6 +355,29 @@ epc_parse_input(epc_parser_t * top_parser, char const * input_string)
     }
 
     return session;
+}
+
+EASY_PC_API epc_parse_session_t
+epc_parse_str(epc_parser_t * top_parser, char const * input_string)
+{
+    epc_parse_input_t input = {.type = EPC_PARSE_TYPE_STRING, .input_string = input_string};
+    
+    return epc_parse_input(top_parser, input);
+}
+
+EASY_PC_API epc_parse_session_t
+epc_parse_fp(epc_parser_t * top_parser, FILE * fp)
+{
+    epc_parse_input_t input = {.type = EPC_PARSE_TYPE_FILE, .fp = fp};
+    
+    return epc_parse_input(top_parser, input);
+}
+
+EASY_PC_API epc_parse_session_t epc_parse_file(epc_parser_t * top_parser, char const * filename)
+{
+    epc_parse_input_t input = {.type = EPC_PARSE_TYPE_FILENAME, .filename = filename};
+    
+    return epc_parse_input(top_parser, input);
 }
 
 EASY_PC_API void

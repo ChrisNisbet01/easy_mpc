@@ -16,12 +16,12 @@ TEST_GROUP(TerminalParsers)
     void setup() override
     {
         // Setup transient parse context for parse_fn calls
-        // This simulates the internal context creation in epc_parse_input()
+        // This simulates the internal context creation in epc_parse_str()
     }
 
     epc_parse_result_t parse(epc_parser_t * parser, char const * input)
     {
-        session = epc_parse_input(parser, input);
+        session = epc_parse_str(parser, input);
         return session.result;
     }
 
@@ -424,12 +424,12 @@ TEST_GROUP(DoubleParser)
     void setup() override
     {
         // Setup transient parse context for parse_fn calls
-        // This simulates the internal context creation in epc_parse_input()
+        // This simulates the internal context creation in epc_parse_str()
     }
 
     epc_parse_result_t parse(epc_parser_t * parser, char const * input)
     {
-        session = epc_parse_input(parser, input);
+        session = epc_parse_str(parser, input);
         return session.result;
     }
 

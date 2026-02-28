@@ -10,62 +10,6 @@
 #include <string.h>
 #include <sys/types.h>
 
-// Function to read content from a file or stdin
-static char *
-read_input_content(char const * filename)
-{
-    FILE * fp = stdin;
-    long file_size = 0;
-    char * buffer = NULL;
-
-    if (filename)
-    {
-        fp = fopen(filename, "rb");
-        if (!fp)
-        {
-            perror("Failed to open file");
-            return NULL;
-        }
-        fseek(fp, 0, SEEK_END);
-        file_size = ftell(fp);
-        rewind(fp);
-    }
-    else
-    {
-        return NULL; // Signal that filename is not provided, main will use getline
-    }
-
-    buffer = (char *)malloc(file_size + 1);
-    if (!buffer)
-    {
-        perror("Failed to allocate buffer");
-        if (fp != stdin)
-        {
-            fclose(fp);
-        }
-        return NULL;
-    }
-
-    size_t bytes_read = fread(buffer, 1, file_size, fp);
-    if (bytes_read != (size_t)file_size)
-    {
-        perror("Failed to read entire file");
-        free(buffer);
-        if (fp != stdin)
-        {
-            fclose(fp);
-        }
-        return NULL;
-    }
-    buffer[file_size] = '\0';
-
-    if (fp != stdin)
-    {
-        fclose(fp);
-    }
-    return buffer;
-}
-
 static void
 print_indent(int indent)
 {
@@ -155,13 +99,22 @@ main(int argc, char * argv[])
         fprintf(stderr, "Usage: %s [json_file_path]\n", argv[0]);
         return EXIT_FAILURE;
     }
+    epc_parse_input_t input = {0};
 
     if (argc == 2)
     {
-        input_content = read_input_content(argv[1]);
-        if (!input_content)
+
+        if (0 && strcmp(argv[1], "-") == 0)
         {
-            return EXIT_FAILURE;
+            /* TODO: We should be able to do this once we have input streaming working. */
+            printf("Reading JSON input from stdin.\n");
+            input.type = EPC_PARSE_TYPE_FILE;
+            input.fp = stdin;
+        }
+        else
+        {
+            input.type = EPC_PARSE_TYPE_FILENAME;
+            input.filename = argv[1];
         }
     }
     else
@@ -178,6 +131,8 @@ main(int argc, char * argv[])
         {
             input_content[read_bytes - 1] = '\0';
         }
+        input.type = EPC_PARSE_TYPE_STRING;
+        input.input_string = input_content;
     }
 
     epc_parser_list * list = epc_parser_list_create();
@@ -197,9 +152,8 @@ main(int argc, char * argv[])
         return EXIT_FAILURE;
     }
 
-    epc_compile_result_t compile_result = epc_parse_and_build_ast(
-        json_root_parser, input_content, JSON_ACTION_MAX, json_ast_hook_registry_init, NULL
-    );
+    epc_compile_result_t compile_result
+        = epc_parse_and_build_ast(json_root_parser, input, JSON_ACTION_MAX, json_ast_hook_registry_init, NULL);
 
     if (!compile_result.success)
     {

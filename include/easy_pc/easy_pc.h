@@ -54,6 +54,35 @@ typedef struct epc_line_col_t
     size_t col;
 } epc_line_col_t;
 
+/**
+ * @brief Represents the input to be parsed, which can be either a string or a file stream.
+ */
+typedef enum epc_parse_type_t
+{
+    EPC_PARSE_TYPE_STRING,
+    EPC_PARSE_TYPE_FILE,
+    EPC_PARSE_TYPE_FILENAME, /* Future extension for file path input */
+} epc_parse_type_t;
+
+/**
+ * @brief A union type that encapsulates the different forms of input that can be parsed.
+ *
+ * The `type` field indicates which member of the union is valid. For `EPC_PARSE_TYPE_STRING`,
+ * the `input_string` member should be used, and for `EPC_PARSE_TYPE_FILE`, the `fp` member
+ * should be used. This structure allows the parsing API to accept multiple input types in a
+ * flexible manner.
+ */
+typedef struct epc_parse_input_t
+{
+    epc_parse_type_t type;
+    union
+    {
+        char const * input_string;
+        FILE * fp;
+        char const * filename;
+    };
+} epc_parse_input_t;
+
 // Error Handling struct
 /**
  * @brief Represents a detailed parsing error.
@@ -100,9 +129,8 @@ typedef struct
     } data;                         /**< @brief Union holding either the success node or error details. */
 } epc_parse_result_t;
 
-// --- New: Parse Session Result ---
-// This replaces parser_result_and_ctx_t
-// It contains the parse result and the transient context for cleanup
+// --- Parse Session Result ---
+// Contains the parse result and the transient context for cleanup
 /**
  * @brief Represents the complete result and context of a parsing session.
  *
@@ -1091,18 +1119,48 @@ EASY_PC_API void epc_parser_set_ast_action(epc_parser_t * p, int action_type);
 // --- Updated Top-Level API ---
 /**
  * @brief Initiates a parsing operation with a given grammar and input string.
- *
- * This is the primary entry point for parsing. It attempts to match the
- * `top_parser` against the `input_string`.
+ *        This is a convenience wrapper for `epc_parse_input()` that accepts a null-terminated C string.
  *
  * @param top_parser The starting parser for the grammar (e.g., the root rule).
- * @param input The string to be parsed.
+ * @param input_string The null-terminated string to be parsed.
  * @return An `easy_pc_parse_session_t` structure containing the result of the
  *         parsing operation (success CPT or error details) and an internal
  *         context for cleanup.
  *         This session MUST be destroyed with `easy_pc_parse_session_destroy`.
  */
-EASY_PC_API epc_parse_session_t epc_parse_input(epc_parser_t * top_parser, char const * input);
+EASY_PC_API epc_parse_session_t
+epc_parse_str(epc_parser_t * top_parser, char const * input_string);
+
+/**
+ * @brief Initiates a parsing operation with a given grammar and input file stream.
+ *
+ * This function is similar to `epc_parse_input()`, but it reads from a `FILE*`
+ * stream instead of a string. It attempts to match the `top_parser` against
+ * the content of the file.
+ *
+ * @param top_parser The starting parser for the grammar (e.g., the root rule).
+ * @param fp A pointer to an open `FILE` stream to be parsed.
+ * @return An `easy_pc_parse_session_t` structure containing the result of the
+ *         parsing operation (success CPT or error details) and an internal
+ *         context for cleanup.
+ *         This session MUST be destroyed with `easy_pc_parse_session_destroy`.
+ */
+EASY_PC_API epc_parse_session_t epc_parse_fp(epc_parser_t * top_parser, FILE * fp);
+
+/**
+ * @brief Initiates a parsing operation with a given grammar and input file specified by filename.
+ *
+ * This function is similar to `epc_parse_input()`, but it reads from a file specified by its name.
+ * It attempts to match the `top_parser` against the content of the file.
+ *
+ * @param top_parser The starting parser for the grammar (e.g., the root rule).
+ * @param filename A null-terminated string containing the path to the file to be parsed.
+ * @return An `easy_pc_parse_session_t` structure containing the result of the
+ *         parsing operation (success CPT or error details) and an internal
+ *         context for cleanup.
+ *         This session MUST be destroyed with `easy_pc_parse_session_destroy`.
+ */
+EASY_PC_API epc_parse_session_t epc_parse_file(epc_parser_t * top_parser, char const * filename);
 
 /**
  * @brief Destroys an `easy_pc_parse_session_t` and frees all associated resources.

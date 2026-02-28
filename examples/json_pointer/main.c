@@ -1,6 +1,6 @@
 #include "json_pointer.h" // Generated header
-#include "json_pointer_ast.h"
 #include "json_pointer_actions.h"
+#include "json_pointer_ast.h"
 #include "json_pointer_ast_actions.h"
 
 #include <easy_pc/easy_pc.h>
@@ -18,22 +18,23 @@ print_json_pointer_ast(json_pointer_node_t * node)
 
     switch (node->type)
     {
-        case JSON_POINTER_NODE_STRING:
-            printf("\"%s\"\n", node->data.string);
-            break;
-        case JSON_POINTER_NODE_LIST:
-            for (json_pointer_list_node_t * curr = node->data.list.head; curr; curr = curr->next)
-            {
-                print_json_pointer_ast(curr->item);
-            }
-            break;
-        default:
-            printf("UNKNOWN NODE TYPE");
-            break;
+    case JSON_POINTER_NODE_STRING:
+        printf("\"%s\"\n", node->data.string);
+        break;
+    case JSON_POINTER_NODE_LIST:
+        for (json_pointer_list_node_t * curr = node->data.list.head; curr; curr = curr->next)
+        {
+            print_json_pointer_ast(curr->item);
+        }
+        break;
+    default:
+        printf("UNKNOWN NODE TYPE");
+        break;
     }
 }
 
-int main(int argc, char ** argv)
+int
+main(int argc, char ** argv)
 {
     if (argc < 2)
     {
@@ -41,7 +42,7 @@ int main(int argc, char ** argv)
         return EXIT_FAILURE;
     }
 
-    const char * input_string = argv[1];
+    char const * input_string = argv[1];
 
     epc_parser_list * parser_list = epc_parser_list_create();
     if (parser_list == NULL)
@@ -58,11 +59,11 @@ int main(int argc, char ** argv)
         epc_parser_list_free(parser_list);
         return EXIT_FAILURE;
     }
+    epc_parse_input_t input = {.type = EPC_PARSE_TYPE_STRING, .input_string = input_string};
 
-    epc_compile_result_t compile_result =
-        epc_parse_and_build_ast(json_pointer_parser, input_string,
-                                JSON_POINTER_AST_ACTION_COUNT__,
-                                json_pointer_ast_hook_registry_init, NULL);
+    epc_compile_result_t compile_result = epc_parse_and_build_ast(
+        json_pointer_parser, input, JSON_POINTER_AST_ACTION_COUNT__, json_pointer_ast_hook_registry_init, NULL
+    );
 
     if (!compile_result.success)
     {

@@ -10,7 +10,7 @@ epc_parser_t * CREATE_PARSER_FN(epc_parser_list * list);
 static void
 run_parse(epc_parser_t * parser, char const * input_string)
 {
-    epc_parse_session_t session = epc_parse_input(parser, input_string);
+    epc_parse_session_t session = epc_parse_str(parser, input_string);
 
     epc_parse_session_print_cpt(stdout, &session);
     epc_parse_session_destroy(&session);

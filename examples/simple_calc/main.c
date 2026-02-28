@@ -7,12 +7,13 @@
 #include "easy_pc/easy_pc_ast.h"
 
 #include <math.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
 
-int main(int argc, char ** argv)
+int
+main(int argc, char ** argv)
 {
     if (argc < 2)
     {
@@ -20,14 +21,12 @@ int main(int argc, char ** argv)
         return 1;
     }
 
-    const char * input_expr = argv[1];
+    char const * input_expr = argv[1];
 
-    variable_t variables[1] = {
-        {
-            .name = "x",
-            .value = 2.3,
-        }
-    };
+    variable_t variables[1] = {{
+        .name = "x",
+        .value = 2.3,
+    }};
 
     variable_t constants[2] = {
         {
@@ -43,8 +42,10 @@ int main(int argc, char ** argv)
     epc_parser_list * list = epc_parser_list_create();
     epc_parser_t * formula_parser = create_formula_grammar(list, 1, variables, 2, constants);
 
-    epc_compile_result_t compile_result =
-        epc_parse_and_build_ast(formula_parser, input_expr, AST_ACTION_MAX, simple_calc_ast_hook_registry_init, NULL);
+    epc_parse_input_t input = {.type = EPC_PARSE_TYPE_STRING, .input_string = input_expr};
+
+    epc_compile_result_t compile_result
+        = epc_parse_and_build_ast(formula_parser, input, AST_ACTION_MAX, simple_calc_ast_hook_registry_init, NULL);
 
     int exit_code = EXIT_FAILURE;
 
@@ -63,9 +64,8 @@ int main(int argc, char ** argv)
     else
     {
         printf("Expression successfully compiled.\n");
-        double calculated_result =
-            evaluate_ast(compile_result.ast, variables, 1, constants, 2);
-        
+        double calculated_result = evaluate_ast(compile_result.ast, variables, 1, constants, 2);
+
         printf("Result: %lf\n", calculated_result);
         exit_code = EXIT_SUCCESS;
     }

@@ -189,6 +189,11 @@ struct epc_ast_hook_registry_t
     epc_ast_enter_cb enter_node;    /**< @brief Callback for entering a CPT node. */
 };
 
+/**
+ * @brief Initiates a parsing operation with a given grammar and input.
+ */
+EASY_PC_HIDDEN epc_parse_session_t epc_parse_input(epc_parser_t * top_parser, epc_parse_input_t input);
+
 EASY_PC_HIDDEN
 epc_parse_result_t
 epc_unparsed_error_result(size_t input_offset, char const * message, char const * expected, char const * found);

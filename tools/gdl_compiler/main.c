@@ -1,65 +1,27 @@
-#include "gdl_parser.h"
-#include "gdl_compiler_ast_actions.h"
-#include "gdl_code_generator.h"
 #include "gdl_bootstrap_generator.h"
+#include "gdl_code_generator.h"
+#include "gdl_compiler_ast_actions.h"
+#include "gdl_parser.h"
 
 #include <easy_pc/easy_pc.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-// Function to read the entire content of a file into a dynamically allocated string
-char *
-read_file_content(const char * filepath)
-{
-    FILE * file = fopen(filepath, "rb");
-    if (file == NULL)
-    {
-        perror("Error opening file");
-        return NULL;
-    }
-
-    fseek(file, 0, SEEK_END);
-    long length = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    char * buffer = (char *)malloc(length + 1);
-    if (buffer == NULL)
-    {
-        perror("Error allocating buffer");
-        fclose(file);
-        return NULL;
-    }
-
-    size_t read_bytes = fread(buffer, 1, length, file);
-    if (read_bytes != (size_t)length)
-    {
-        perror("Error reading file");
-        free(buffer);
-        fclose(file);
-        return NULL;
-    }
-    buffer[length] = '\0'; // Null-terminate the string
-
-    fclose(file);
-    return buffer;
-}
 
 int
 main(int argc, char ** argv)
 {
     int exit_code = EXIT_SUCCESS;
-    const char * gdl_filepath = NULL;
-    const char * output_dir = "."; // Default output directory
+    char const * gdl_filepath = NULL;
+    char const * output_dir = "."; // Default output directory
 
     // Parse command line arguments
     for (int i = 1; i < argc; ++i)
     {
         if (strncmp(argv[i], "--output-dir", strlen("--output-dir")) == 0)
         {
-            const char * arg = argv[i];
-            const char * value_start = strchr(arg, '=');
+            char const * arg = argv[i];
+            char const * value_start = strchr(arg, '=');
             if (value_start)
             {
                 // Handle --output-dir=/path/to/dir
@@ -100,18 +62,10 @@ main(int argc, char ** argv)
         return EXIT_FAILURE;
     }
 
-    char * gdl_content = read_file_content(gdl_filepath);
-    if (!gdl_content)
-    {
-        return EXIT_FAILURE;
-    }
-
-    //printf("Parsing: '%s'\n", gdl_content);
     epc_parser_list * gdl_parser_list = epc_parser_list_create();
     if (gdl_parser_list == NULL)
     {
         fprintf(stderr, "Failed to create GDL parser list.\n");
-        free(gdl_content);
         return EXIT_FAILURE;
     }
 
@@ -120,34 +74,37 @@ main(int argc, char ** argv)
     if (!gdl_grammar_parser)
     {
         fprintf(stderr, "Failed to create GDL grammar parser.\n.");
-        free(gdl_content);
         epc_parser_list_free(gdl_parser_list);
         return EXIT_FAILURE;
     }
 
     // 2. Parse the input GDL content
-    epc_parse_session_t session = epc_parse_input(gdl_grammar_parser, gdl_content);
+    epc_parse_session_t session = epc_parse_file(gdl_grammar_parser, gdl_filepath);
 
     // 3. Process the result
     if (session.result.is_error)
     {
-        fprintf(stderr, "GDL Parsing Error: %s at input position '%.10s...'\n",
-                session.result.data.error->message,
-                session.result.data.error->input_position);
-        fprintf(stderr, "    Expected %s, found: %s at line %zu, col %zu'\n",
-                session.result.data.error->expected,
-                session.result.data.error->found,
-                session.result.data.error->position.line,
-                session.result.data.error->position.col
-               );
+        fprintf(
+            stderr,
+            "GDL Parsing Error: %s at input position '%.10s...'\n",
+            session.result.data.error->message,
+            session.result.data.error->input_position
+        );
+        fprintf(
+            stderr,
+            "    Expected %s, found: %s at line %zu, col %zu'\n",
+            session.result.data.error->expected,
+            session.result.data.error->found,
+            session.result.data.error->position.line,
+            session.result.data.error->position.col
+        );
         exit_code = EXIT_FAILURE;
     }
     else
     {
         printf("GDL parsed successfully! Now building AST...\n");
         // AST Builder setup
-        epc_ast_hook_registry_t * ast_registry =
-            epc_ast_hook_registry_create(GDL_AST_ACTION_MAX);
+        epc_ast_hook_registry_t * ast_registry = epc_ast_hook_registry_create(GDL_AST_ACTION_MAX);
 
         if (ast_registry == NULL)
         {
@@ -158,8 +115,7 @@ main(int argc, char ** argv)
         {
             gdl_ast_hook_registry_init(ast_registry, NULL); // No specific user_data needed
 
-            epc_ast_result_t ast_build_result =
-                epc_ast_build(session.result.data.success, ast_registry, NULL);
+            epc_ast_result_t ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);
 
             if (ast_build_result.has_error)
             {
@@ -206,7 +162,9 @@ main(int argc, char ** argv)
                     if (strcmp(argv[i], "--bootstrap-ast") == 0)
                     {
                         printf("AST bootstrap files generation requested.\n");
-                        generate_ast_bootstrap_files((gdl_ast_node_t *)ast_build_result.ast_root, base_name, output_dir);
+                        generate_ast_bootstrap_files(
+                            (gdl_ast_node_t *)ast_build_result.ast_root, base_name, output_dir
+                        );
                         break;
                     }
                 }
@@ -220,7 +178,6 @@ main(int argc, char ** argv)
     // 4. Cleanup
     epc_parse_session_destroy(&session);
     epc_parser_list_free(gdl_parser_list);
-    free(gdl_content);
 
     return exit_code;
 }

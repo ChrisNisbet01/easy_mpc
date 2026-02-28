@@ -20,7 +20,7 @@ TEST_GROUP(CptPrinter)
 
     epc_parse_result_t parse(epc_parser_t * parser, char const * input)
     {
-        session = epc_parse_input(parser, input);
+        session = epc_parse_str(parser, input);
         return session.result;
     }
 

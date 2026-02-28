@@ -1,9 +1,9 @@
 #include "easy_pc_private.h"
-#include <easy_pc/easy_pc_ast.h> // Public header for AST API
 
+#include <easy_pc/easy_pc_ast.h> // Public header for AST API
+#include <stdio.h>               // For snprintf, vsnprintf, fprintf
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h> // For snprintf, vsnprintf, fprintf
 
 // --- AST Hook Registry Implementation ---
 
@@ -44,11 +44,7 @@ epc_ast_hook_registry_free(epc_ast_hook_registry_t * registry)
 }
 
 EASY_PC_API void
-epc_ast_hook_registry_set_action(
-    epc_ast_hook_registry_t * registry,
-    int action_index,
-    epc_ast_action_cb cb
-)
+epc_ast_hook_registry_set_action(epc_ast_hook_registry_t * registry, int action_index, epc_ast_action_cb cb)
 {
     if (!registry || action_index < 0 || action_index >= registry->action_count)
     {
@@ -58,10 +54,7 @@ epc_ast_hook_registry_set_action(
 }
 
 EASY_PC_API void
-epc_ast_hook_registry_set_free_node(
-    epc_ast_hook_registry_t * registry,
-    epc_ast_node_free_cb cb
-)
+epc_ast_hook_registry_set_free_node(epc_ast_hook_registry_t * registry, epc_ast_node_free_cb cb)
 {
     if (!registry)
     {
@@ -71,10 +64,7 @@ epc_ast_hook_registry_set_free_node(
 }
 
 EASY_PC_API void
-epc_ast_hook_registry_set_enter_node(
-    epc_ast_hook_registry_t * registry,
-    epc_ast_enter_cb cb
-)
+epc_ast_hook_registry_set_enter_node(epc_ast_hook_registry_t * registry, epc_ast_enter_cb cb)
 {
     if (!registry)
     {
@@ -130,7 +120,7 @@ epc_ast_builder_ctx_cleanup(epc_ast_builder_ctx_t * ctx)
 
 EASY_PC_API
 void
-epc_ast_builder_set_error(epc_ast_builder_ctx_t * ctx, const char * format, ...)
+epc_ast_builder_set_error(epc_ast_builder_ctx_t * ctx, char const * format, ...)
 {
     if (ctx->has_error)
     {
@@ -319,10 +309,8 @@ epc_ast_builder_exit_node_cb(epc_cpt_node_t * node, void * user_data)
         return;
     }
 
-    bool has_action_assigned =
-        node->ast_config.assigned
-        && node->ast_config.action >= 0
-        && node->ast_config.action < ctx->registry->action_count;
+    bool has_action_assigned = node->ast_config.assigned && node->ast_config.action >= 0
+                               && node->ast_config.action < ctx->registry->action_count;
 
     if (has_action_assigned)
     {
@@ -351,13 +339,9 @@ epc_ast_builder_exit_node_cb(epc_cpt_node_t * node, void * user_data)
 // --- Public AST Building API ---
 
 EASY_PC_API epc_ast_result_t
-epc_ast_build(
-    epc_cpt_node_t * root,
-    epc_ast_hook_registry_t * registry,
-    void * user_data
-)
+epc_ast_build(epc_cpt_node_t * root, epc_ast_hook_registry_t * registry, void * user_data)
 {
-    epc_ast_result_t result = { 0 };
+    epc_ast_result_t result = {0};
     if (!root || !registry || !registry->callbacks || registry->action_count <= 0)
     {
         result.has_error = true;
@@ -376,11 +360,8 @@ epc_ast_build(
         return result;
     }
 
-    epc_cpt_visitor_t ast_builder_visitor = {
-        .enter_node = epc_ast_builder_enter_node_cb,
-        .exit_node = epc_ast_builder_exit_node_cb,
-        .user_data = &ctx
-    };
+    epc_cpt_visitor_t ast_builder_visitor
+        = {.enter_node = epc_ast_builder_enter_node_cb, .exit_node = epc_ast_builder_exit_node_cb, .user_data = &ctx};
 
     epc_cpt_visit_nodes(root, &ast_builder_visitor);
 
@@ -417,7 +398,7 @@ epc_ast_build(
 EASY_PC_API epc_compile_result_t
 epc_parse_and_build_ast(
     epc_parser_t * parser,
-    char const * input,
+    epc_parse_input_t input,
     int ast_action_count,
     epc_ast_registry_init_cb registry_init_cb,
     void * user_data
@@ -428,18 +409,27 @@ epc_parse_and_build_ast(
 
     if (parse_session.result.is_error)
     {
+        char const * input = parse_ctx_get_input_start(parse_session.internal_parse_ctx);
+        if (input == NULL)
+        {
+            input = ""; // Fallback to empty string if we can't get input position
+        }
+        size_t input_len = strlen(input);
         result.success = false;
-        char *msg = NULL;
+        char * msg = NULL;
         // The error structure from the parser has all the necessary details.
-        epc_parser_error_t *err = parse_session.result.data.error;
+        epc_parser_error_t * err = parse_session.result.data.error;
         int len = asprintf(
             &msg,
             "Parse error: %s at '%.*s' (expected '%s', found '%.*s')Error err: line: %zu, col: %zu",
             err->message,
-            (int)(input + strlen(input) - err->input_position), err->input_position,
+            (int)(input + input_len - err->input_position),
+            err->input_position,
             err->expected ? err->expected : "N/A",
-            (int)strlen(err->found), err->found ? err->found : "N/A",
-            err->position.line, err->position.col
+            (int)strlen(err->found),
+            err->found ? err->found : "N/A",
+            err->position.line,
+            err->position.col
         );
         if (len < 0)
         {
@@ -465,8 +455,8 @@ epc_parse_and_build_ast(
                 registry_init_cb(ast_registry);
             }
 
-            epc_ast_result_t ast_build_result =
-                epc_ast_build(parse_session.result.data.success, ast_registry, user_data);
+            epc_ast_result_t ast_build_result
+                = epc_ast_build(parse_session.result.data.success, ast_registry, user_data);
 
             if (ast_build_result.has_error)
             {
@@ -487,11 +477,7 @@ epc_parse_and_build_ast(
 }
 
 EASY_PC_API void
-epc_compile_result_cleanup(
-    epc_compile_result_t * result,
-    epc_ast_node_free_cb ast_free_cb,
-    void * user_data
-)
+epc_compile_result_cleanup(epc_compile_result_t * result, epc_ast_node_free_cb ast_free_cb, void * user_data)
 {
     if (result == NULL)
     {

@@ -5,8 +5,7 @@
 #include <stddef.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 // Forward declarations of internal context types
@@ -24,11 +23,7 @@ typedef struct epc_ast_builder_ctx_t epc_ast_builder_ctx_t;
  * @param user_data User-defined data pointer, passed through from `epc_ast_build`.
  */
 typedef void (*epc_ast_action_cb)(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 );
 
 /**
@@ -39,11 +34,7 @@ typedef void (*epc_ast_action_cb)(
  * @param node The CPT node being entered.
  * @param user_data User-defined data pointer.
  */
-typedef void (*epc_ast_enter_cb)(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * user_data
-);
+typedef void (*epc_ast_enter_cb)(epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void * user_data);
 
 /**
  * @brief Callback for freeing a user-defined AST node.
@@ -70,16 +61,14 @@ typedef struct epc_ast_hook_registry_t epc_ast_hook_registry_t;
  * @param action_count The maximum value of any semantic action index that will be used.
  * @return A new `epc_ast_hook_registry_t` instance, or NULL on error.
  */
-EASY_PC_API epc_ast_hook_registry_t *
-epc_ast_hook_registry_create(int action_count);
+EASY_PC_API epc_ast_hook_registry_t * epc_ast_hook_registry_create(int action_count);
 
 /**
  * @brief Frees an AST hook registry and its associated resources.
  *
  * @param registry The registry to free.
  */
-EASY_PC_API void
-epc_ast_hook_registry_free(epc_ast_hook_registry_t * registry);
+EASY_PC_API void epc_ast_hook_registry_free(epc_ast_hook_registry_t * registry);
 
 /**
  * @brief Sets a semantic action callback in the registry.
@@ -89,11 +78,7 @@ epc_ast_hook_registry_free(epc_ast_hook_registry_t * registry);
  * @param cb The callback function to be called for this action.
  */
 EASY_PC_API void
-epc_ast_hook_registry_set_action(
-    epc_ast_hook_registry_t * registry,
-    int action_index,
-    epc_ast_action_cb cb
-);
+epc_ast_hook_registry_set_action(epc_ast_hook_registry_t * registry, int action_index, epc_ast_action_cb cb);
 
 /**
  * @brief Sets the node destructor callback in the registry.
@@ -103,11 +88,7 @@ epc_ast_hook_registry_set_action(
  * @param registry The registry to update.
  * @param cb The destructor callback function.
  */
-EASY_PC_API void
-epc_ast_hook_registry_set_free_node(
-    epc_ast_hook_registry_t * registry,
-    epc_ast_node_free_cb cb
-);
+EASY_PC_API void epc_ast_hook_registry_set_free_node(epc_ast_hook_registry_t * registry, epc_ast_node_free_cb cb);
 
 /**
  * @brief Sets the global enter-node callback in the registry.
@@ -116,18 +97,18 @@ epc_ast_hook_registry_set_free_node(
  * @param registry The registry to update.
  * @param cb The callback function.
  */
-EASY_PC_API void
-epc_ast_hook_registry_set_enter_node(
-    epc_ast_hook_registry_t * registry,
-    epc_ast_enter_cb cb
-);
+EASY_PC_API void epc_ast_hook_registry_set_enter_node(epc_ast_hook_registry_t * registry, epc_ast_enter_cb cb);
 
-EASY_PC_API void
-epc_ast_builder_set_error(
-    epc_ast_builder_ctx_t * ctx,
-    const char * format,
-    ...
-);
+/**
+ * @brief Sets an error message in the AST builder context.
+ *        This function should be called from within action callbacks to report errors.
+ *       Once an error is set, the builder will stop processing further nodes and will
+ *       attempt to free any remaining nodes on the stack using the provided `free_node` callback.
+ * @param ctx The AST builder context.
+ * @param format The error message format string.
+ * @param ... The arguments for the error message format string.
+ */
+EASY_PC_API void epc_ast_builder_set_error(epc_ast_builder_ctx_t * ctx, char const * format, ...);
 
 /**
  * @brief Pushes a user-defined AST node onto the builder's internal stack.
@@ -136,8 +117,7 @@ epc_ast_builder_set_error(
  * @param ctx The AST builder context.
  * @param node The user-defined AST node (a `void*` pointer) to push.
  */
-EASY_PC_API void
-epc_ast_push(epc_ast_builder_ctx_t * ctx, void * node);
+EASY_PC_API void epc_ast_push(epc_ast_builder_ctx_t * ctx, void * node);
 
 /**
  * @brief Represents the result of an AST construction operation.
@@ -160,12 +140,7 @@ typedef struct
  * @param user_data Optional user data to be passed to all callbacks.
  * @return An `epc_ast_result_t` containing the result of the AST build.
  */
-EASY_PC_API epc_ast_result_t
-epc_ast_build(
-    epc_cpt_node_t * root,
-    epc_ast_hook_registry_t * registry,
-    void * user_data
-);
+EASY_PC_API epc_ast_result_t epc_ast_build(epc_cpt_node_t * root, epc_ast_hook_registry_t * registry, void * user_data);
 
 /**
  * @brief Represents the result of a combined parsing and AST-building operation.
@@ -177,10 +152,10 @@ epc_ast_build(
  */
 typedef struct epc_compile_result_t
 {
-    bool success;                /**< True if both parsing and AST building succeeded. */
-    void * ast;                  /**< The root of the resulting AST if successful, otherwise NULL. */
-    char * parse_error_message;  /**< An error message if the parsing step failed, otherwise NULL. */
-    char * ast_error_message;    /**< An error message if the AST building step failed, otherwise NULL. */
+    bool success;               /**< True if both parsing and AST building succeeded. */
+    void * ast;                 /**< The root of the resulting AST if successful, otherwise NULL. */
+    char * parse_error_message; /**< An error message if the parsing step failed, otherwise NULL. */
+    char * ast_error_message;   /**< An error message if the AST building step failed, otherwise NULL. */
 } epc_compile_result_t;
 
 /**
@@ -204,16 +179,15 @@ typedef void (*epc_ast_registry_init_cb)(epc_ast_hook_registry_t * registry);
  * 5. Cleaning up all intermediate resources.
  *
  * @param parser The top-level parser to use.
- * @param input The input string to parse.
+ * @param input The input (string or file) to parse.
  * @param ast_action_count The number of AST actions (max index + 1).
  * @param registry_init_cb A callback function to initialize the hook registry.
  * @param user_data Optional user data to be passed to all AST callbacks.
  * @return An 'epc_compile_result_t' struct containing the result.
  */
-EASY_PC_API epc_compile_result_t
-epc_parse_and_build_ast(
+EASY_PC_API epc_compile_result_t epc_parse_and_build_ast(
     epc_parser_t * parser,
-    char const * input,
+    epc_parse_input_t input,
     int ast_action_count,
     epc_ast_registry_init_cb registry_init_cb,
     void * user_data
@@ -231,11 +205,7 @@ epc_parse_and_build_ast(
  * @param user_data Optional user data to be passed to the free callback.
  */
 EASY_PC_API void
-epc_compile_result_cleanup(
-    epc_compile_result_t * result,
-    epc_ast_node_free_cb ast_free_cb,
-    void * user_data
-);
+epc_compile_result_cleanup(epc_compile_result_t * result, epc_ast_node_free_cb ast_free_cb, void * user_data);
 
 #ifdef __cplusplus
 }
