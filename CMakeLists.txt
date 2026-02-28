@@ -17,6 +17,7 @@ endif()
 
 # --- Unit Tests ---
 option(WITH_UNIT_TESTS "Build unit tests" OFF)
+add_custom_target(all_unit_tests)
 
 if(WITH_UNIT_TESTS)
 

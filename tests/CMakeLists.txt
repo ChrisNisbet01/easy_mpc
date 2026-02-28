@@ -1,7 +1,5 @@
 enable_testing()
 
-add_custom_target(all_unit_tests)
-
 add_executable(TerminalParsersTest 
     AllTests.cpp
     TerminalParsersTest.cpp
