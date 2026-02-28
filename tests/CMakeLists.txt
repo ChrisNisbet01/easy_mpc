@@ -287,3 +287,26 @@ add_test(
     NAME AstBuilderTest
     COMMAND AstBuilderTest
 )
+
+add_executable(StreamingTest
+    AllTests.cpp
+    StreamingTest.cpp
+)
+
+add_dependencies(all_unit_tests StreamingTest)
+
+target_include_directories(StreamingTest PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lib
+)
+
+target_link_libraries(StreamingTest PRIVATE
+    easy_pc_shared
+    CppUTest
+    CppUTestExt
+)
+
+add_test(
+    NAME StreamingTest
+    COMMAND StreamingTest
+)

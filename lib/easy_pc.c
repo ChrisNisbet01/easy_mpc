@@ -289,6 +289,8 @@ parse_ctx_get_input_at_offset(epc_parser_ctx_t * const ctx, size_t const input_o
             // We've reached EOF or an error occurred before enough data was available
             pthread_mutex_unlock(&ctx->mutex);
             return (parse_get_input_result_t){
+                .next_input = &ctx->input_start[input_offset],
+                .available = ctx->input_len - input_offset,
                 .is_eof = true,
                 /* We might want to pass back the error code somehow in the future */
             };
@@ -306,6 +308,8 @@ parse_ctx_get_input_at_offset(epc_parser_ctx_t * const ctx, size_t const input_o
     if (input_offset + count > ctx->input_len)
     {
         return (parse_get_input_result_t){
+            .next_input = &ctx->input_start[input_offset],
+            .available = ctx->input_len - input_offset,
             .is_eof = true,
         };
     }

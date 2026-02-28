@@ -480,7 +480,7 @@ TEST(TerminalParsersNew, CComment_FailsOnNoStartDelimiter)
 {
     epc_parser_t * p = epc_c_comment_l(list, NULL);
     session = epc_parse_str(p, "Not a comment */");
-    check_failure("Expected \"/*\"");
+    check_failure("Expected '/*'");
 }
 
 TEST(TerminalParsersNew, CComment_FailsOnEmptyInput)
