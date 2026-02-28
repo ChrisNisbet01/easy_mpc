@@ -592,26 +592,79 @@ epc_digit(char const * name)
     return p;
 }
 
+static bool
+is_double_prefix(char const * s, size_t len)
+{
+    if (len == 0)
+    {
+        return false;
+    }
+    for (size_t i = 0; i < len; i++)
+    {
+        if (strchr(".eE+-xXpP", s[i]) == NULL)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 static epc_parse_result_t
 pint_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset)
 {
-    parse_get_input_result_t input_result = parse_ctx_get_input_at_offset(ctx, input_offset, 1);
+    size_t current_len = 0;
+    size_t parsed_len = 0;
+    char const * input = NULL;
 
-    if (input_result.is_eof)
+    if (parse_ctx_is_streaming(ctx))
+    {
+        while (1)
+        {
+            parse_get_input_result_t res = parse_ctx_get_input_at_offset(ctx, input_offset, current_len + 1);
+            if (res.is_eof)
+            {
+                break;
+            }
+
+            input = res.next_input;
+            current_len = res.available;
+
+            char * endptr;
+            (void)strtoll(input, &endptr, 10);
+            parsed_len = (size_t)(endptr - input);
+
+            if (parsed_len < current_len)
+            {
+                // If it parsed 0 but the first char is a sign, we might want to wait for digits.
+                if (parsed_len == 0 && (input[0] == '+' || input[0] == '-'))
+                {
+                    // Continue loop to wait for more data
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    parse_get_input_result_t input_result = parse_ctx_get_input_at_offset(ctx, input_offset, parsed_len > 0 ? parsed_len : 1);
+
+    if (input_result.is_eof && parsed_len == 0)
     {
         return epc_parser_error_result(ctx, input_offset, "Unexpected end of input", "integer", "EOF");
     }
 
-    char const * input = input_result.next_input;
-    char * endptr;
-    (void)strtoll(input, &endptr, 10); // Base 10
-
-    size_t parsed_len = endptr - input;
-    /* Check that parsed_len doesn't extend beyond the end of input. */
-    parse_get_input_result_t parsed_len_result = parse_ctx_get_input_at_offset(ctx, input_offset, parsed_len);
+    input = input_result.next_input;
+    if (parsed_len == 0)
+    {
+        char * endptr;
+        (void)strtoll(input, &endptr, 10);
+        parsed_len = (size_t)(endptr - input);
+    }
 
     // A valid integer must parse at least one digit
-    if (parsed_len > 0 && !parsed_len_result.is_eof
+    if (parsed_len > 0
         && (isdigit(input[0]) || (input[0] == '-' && parsed_len > 1 && isdigit(input[1]))))
     {
         epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
@@ -630,7 +683,14 @@ pint_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_o
 
     /* No match to an integer. */
     char found_buffer[FOUND_BUFFER_SIZE];
-    strncpy(found_buffer, "EOF", sizeof(found_buffer) - 1);
+    if (input_result.is_eof)
+    {
+        strncpy(found_buffer, "EOF", sizeof(found_buffer) - 1);
+    }
+    else
+    {
+        snprintf(found_buffer, sizeof(found_buffer), "%.*s", 1, input);
+    }
     found_buffer[sizeof(found_buffer) - 1] = '\0';
 
     return epc_parser_error_result(ctx, input_offset, "Expected an integer", "integer", found_buffer);
@@ -791,19 +851,58 @@ epc_alphanum(char const * name)
 static epc_parse_result_t
 pdouble_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset)
 {
-    parse_get_input_result_t input_result = parse_ctx_get_input_at_offset(ctx, input_offset, 1);
+    size_t current_len = 0;
+    size_t parsed_len = 0;
+    char const * input = NULL;
 
-    if (input_result.is_eof)
+    if (parse_ctx_is_streaming(ctx))
+    {
+        while (1)
+        {
+            parse_get_input_result_t res = parse_ctx_get_input_at_offset(ctx, input_offset, current_len + 1);
+            if (res.is_eof)
+            {
+                break;
+            }
+
+            input = res.next_input;
+            current_len = res.available;
+
+            char * endptr;
+            errno = 0;
+            (void)strtod(input, &endptr);
+            parsed_len = (size_t)(endptr - input);
+
+            if (parsed_len < current_len)
+            {
+                // Check if the suffix is a potential numeric prefix
+                if (is_double_prefix(input + parsed_len, current_len - parsed_len))
+                {
+                    // Continue loop and wait for more
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    parse_get_input_result_t input_result = parse_ctx_get_input_at_offset(ctx, input_offset, parsed_len > 0 ? parsed_len : 1);
+
+    if (input_result.is_eof && parsed_len == 0)
     {
         return epc_parser_error_result(ctx, input_offset, "Unexpected end of input", "double", "EOF");
     }
 
-    char const * input = input_result.next_input;
-
-    // Use strtod to parse the double
-    char * endptr;
-    (void)strtod(input, &endptr);
-    size_t parsed_len = endptr - input;
+    input = input_result.next_input;
+    if (parsed_len == 0)
+    {
+        char * endptr;
+        errno = 0;
+        (void)strtod(input, &endptr);
+        parsed_len = (size_t)(endptr - input);
+    }
 
     if (errno == ERANGE)
     {
@@ -812,13 +911,18 @@ pdouble_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inpu
         return epc_parser_error_result(ctx, input_offset, "Double out of range", "double", found_str);
     }
 
-    /* Check that parsed_len doesn't extend beyond the end of input. */
-    parse_get_input_result_t parsed_len_result = parse_ctx_get_input_at_offset(ctx, input_offset, parsed_len);
-
-    if (parsed_len == 0 || parsed_len_result.is_eof)
+    if (parsed_len == 0)
     {
         char found_str[FOUND_BUFFER_SIZE];
-        snprintf(found_str, sizeof(found_str), "%.*s", 1, input);
+        if (input_result.is_eof)
+        {
+            strncpy(found_str, "EOF", sizeof(found_str) - 1);
+        }
+        else
+        {
+            snprintf(found_str, sizeof(found_str), "%.*s", 1, input);
+        }
+        found_str[sizeof(found_str) - 1] = '\0';
         return epc_parser_error_result(ctx, input_offset, "Expected a double", "double", found_str);
     }
 

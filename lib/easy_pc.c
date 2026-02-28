@@ -1,7 +1,9 @@
 #include "easy_pc_private.h"
 #include "parsers.h"
 
+#include <ctype.h>
 #include <errno.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,7 +28,30 @@ struct epc_parser_ctx_t
 
     mmap_input_buffer_t mmap_buffer; /* Internal buffer management for input string, using mmap for large inputs. */
     epc_parser_error_t * furthest_error;
+
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+    bool is_streaming;
+    bool is_eof;
+    int input_error;
 };
+
+typedef struct
+{
+    epc_parser_t * top_parser;
+    epc_parser_ctx_t * ctx;
+    epc_parse_result_t result;
+} ParsingThreadArgs;
+
+static void *
+epc_parsing_thread_worker(void * arg)
+{
+    ParsingThreadArgs * args = (ParsingThreadArgs *) arg;
+
+    args->result = args->top_parser->parse_fn(args->top_parser, args->ctx, 0);
+
+    return NULL;
+}
 
 // --- CPT Visitor ---
 static void
@@ -121,6 +146,9 @@ internal_create_parse_ctx_from_string(char const * input_start)
         return NULL;
     }
 
+    pthread_mutex_init(&ctx->mutex, NULL);
+    pthread_cond_init(&ctx->cond, NULL);
+
     if (input_start != NULL)
     {
         memcpy(buffer.buffer, input_start, input_len + 1); /* +1 to include null terminator */
@@ -178,9 +206,39 @@ internal_create_parse_ctx_from_fp(FILE * fp)
         return NULL;
     }
 
+    pthread_mutex_init(&ctx->mutex, NULL);
+    pthread_cond_init(&ctx->cond, NULL);
+
     ctx->mmap_buffer = buffer;
     ctx->input_start = buffer.buffer;
     ctx->input_len = total_read;
+
+    return ctx;
+}
+
+static epc_parser_ctx_t *
+internal_create_parse_ctx_streaming(void)
+{
+    mmap_input_buffer_t buffer = create_mmap_input_buffer(0);
+    if (buffer.buffer == NULL)
+    {
+        return NULL;
+    }
+
+    epc_parser_ctx_t * ctx = calloc(1, sizeof(*ctx));
+    if (ctx == NULL)
+    {
+        munmap(buffer.buffer, buffer.total_size);
+        return NULL;
+    }
+
+    pthread_mutex_init(&ctx->mutex, NULL);
+    pthread_cond_init(&ctx->cond, NULL);
+
+    ctx->mmap_buffer = buffer;
+    ctx->input_start = buffer.buffer;
+    ctx->input_len = 0;
+    ctx->is_streaming = true;
 
     return ctx;
 }
@@ -195,6 +253,10 @@ internal_destroy_parse_ctx(epc_parser_ctx_t * ctx)
     }
 
     epc_parser_error_free(ctx->furthest_error);
+
+    pthread_mutex_destroy(&ctx->mutex);
+    pthread_cond_destroy(&ctx->cond);
+
     if (ctx->mmap_buffer.buffer != NULL)
     {
         munmap((void *)ctx->mmap_buffer.buffer, ctx->mmap_buffer.total_size);
@@ -207,7 +269,41 @@ EASY_PC_HIDDEN
 parse_get_input_result_t
 parse_ctx_get_input_at_offset(epc_parser_ctx_t * const ctx, size_t const input_offset, size_t const count)
 {
-    if (ctx == NULL || ctx->input_start == NULL || input_offset + count > ctx->input_len)
+    if (ctx == NULL || ctx->input_start == NULL)
+    {
+        return (parse_get_input_result_t){
+            .is_eof = true,
+        };
+    }
+
+    if (ctx->is_streaming)
+    {
+        pthread_mutex_lock(&ctx->mutex);
+        while (input_offset + count > ctx->input_len && !ctx->is_eof && ctx->input_error == 0)
+        {
+            pthread_cond_wait(&ctx->cond, &ctx->mutex);
+        }
+
+        if (input_offset + count > ctx->input_len)
+        {
+            // We've reached EOF or an error occurred before enough data was available
+            pthread_mutex_unlock(&ctx->mutex);
+            return (parse_get_input_result_t){
+                .is_eof = true,
+                /* We might want to pass back the error code somehow in the future */
+            };
+        }
+
+        parse_get_input_result_t result = {
+            .next_input = &ctx->input_start[input_offset],
+            .available = ctx->input_len - input_offset,
+            .is_eof = false,
+        };
+        pthread_mutex_unlock(&ctx->mutex);
+        return result;
+    }
+
+    if (input_offset + count > ctx->input_len)
     {
         return (parse_get_input_result_t){
             .is_eof = true,
@@ -218,6 +314,31 @@ parse_ctx_get_input_at_offset(epc_parser_ctx_t * const ctx, size_t const input_o
         .next_input = &ctx->input_start[input_offset],
         .available = ctx->input_len - input_offset,
     };
+}
+
+EASY_PC_HIDDEN
+bool
+parse_ctx_is_streaming(epc_parser_ctx_t const * ctx)
+{
+    return ctx ? ctx->is_streaming : false;
+}
+
+EASY_PC_HIDDEN
+bool
+parse_ctx_is_eof(epc_parser_ctx_t * ctx)
+{
+    if (!ctx)
+    {
+        return true;
+    }
+    if (ctx->is_streaming)
+    {
+        pthread_mutex_lock(&ctx->mutex);
+        bool const is_eof = ctx->is_eof;
+        pthread_mutex_unlock(&ctx->mutex);
+        return is_eof;
+    }
+    return true; // For non-streaming, data is always loaded up to "EOF"
 }
 
 EASY_PC_HIDDEN
@@ -311,9 +432,13 @@ epc_parse_input(epc_parser_t * top_parser, epc_parse_input_t input)
             session.result = epc_unparsed_error_result(0, error_message, "file that can be opened", "unopenable file");
             return session;
         }
-        ctx = internal_create_parse_ctx_from_fp(fopen(input.filename, "r"));
+        ctx = internal_create_parse_ctx_from_fp(fp);
         fclose(fp);
 
+        break;
+
+    case EPC_PARSE_TYPE_FD:
+        ctx = internal_create_parse_ctx_streaming();
         break;
 
     default:
@@ -329,7 +454,63 @@ epc_parse_input(epc_parser_t * top_parser, epc_parse_input_t input)
     }
     session.internal_parse_ctx = ctx;
 
-    session.result = top_parser->parse_fn(top_parser, ctx, 0);
+    if (!ctx->is_streaming)
+    {
+        session.result = top_parser->parse_fn(top_parser, ctx, 0);
+    }
+    else
+    {
+        ParsingThreadArgs args = {
+            .top_parser = top_parser,
+            .ctx = ctx,
+            .result = {0},
+        };
+
+        pthread_t thread;
+        if (pthread_create(&thread, NULL, epc_parsing_thread_worker, &args) != 0)
+        {
+            session.result = epc_unparsed_error_result(0, "Failed to create parsing thread", "parsing thread created", "pthread_create failed");
+            return session;
+        }
+
+        // Producer Loop (Main Thread)
+        char read_buf[4096];
+        ssize_t bytes_read;
+        while ((bytes_read = read(input.fd, read_buf, sizeof(read_buf))) > 0)
+        {
+            pthread_mutex_lock(&ctx->mutex);
+            
+            // Check if we have space in mmap buffer (100MB limit currently)
+            if (ctx->input_len + (size_t)bytes_read > MAX_MMAP_INPUT_SIZE)
+            {
+                ctx->input_error = EFBIG;
+                pthread_cond_broadcast(&ctx->cond);
+                pthread_mutex_unlock(&ctx->mutex);
+                break;
+            }
+
+            memcpy((void *)(ctx->input_start + ctx->input_len), read_buf, (size_t)bytes_read);
+            ctx->input_len += (size_t)bytes_read;
+            
+            pthread_cond_broadcast(&ctx->cond);
+            pthread_mutex_unlock(&ctx->mutex);
+        }
+
+        pthread_mutex_lock(&ctx->mutex);
+        if (bytes_read == 0)
+        {
+            ctx->is_eof = true;
+        }
+        else if (bytes_read < 0)
+        {
+            ctx->input_error = errno;
+        }
+        pthread_cond_broadcast(&ctx->cond);
+        pthread_mutex_unlock(&ctx->mutex);
+
+        pthread_join(thread, NULL);
+        session.result = args.result;
+    }
 
     // After parsing, if an error occurred, check if the tracked "furthest_error"
     // is more informative than the one that caused the final failure.
@@ -377,6 +558,14 @@ EASY_PC_API epc_parse_session_t epc_parse_file(epc_parser_t * top_parser, char c
 {
     epc_parse_input_t input = {.type = EPC_PARSE_TYPE_FILENAME, .filename = filename};
     
+    return epc_parse_input(top_parser, input);
+}
+
+EASY_PC_API epc_parse_session_t
+epc_parse_fd(epc_parser_t * top_parser, int fd)
+{
+    epc_parse_input_t input = {.type = EPC_PARSE_TYPE_FD, .fd = fd};
+
     return epc_parse_input(top_parser, input);
 }
 

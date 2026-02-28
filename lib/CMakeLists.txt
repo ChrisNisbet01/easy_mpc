@@ -30,6 +30,9 @@ target_include_directories(easy_pc_static PUBLIC
 target_compile_options(easy_pc_shared PRIVATE -Wall -Wextra -pedantic)
 target_compile_options(easy_pc_static PRIVATE -Wall -Wextra -pedantic)
 
+target_link_libraries(easy_pc_shared PRIVATE Threads::Threads)
+target_link_libraries(easy_pc_static PRIVATE Threads::Threads)
+
 # LTO settings
 include(CheckIPOSupported)
 check_ipo_supported(RESULT lto_supported)

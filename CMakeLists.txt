@@ -8,6 +8,8 @@ include(cmake/EasyPcMacros.cmake)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+find_package(Threads REQUIRED)
+
 add_subdirectory(lib)
 
 option(BUILD_EXAMPLES "Build example applications" OFF)

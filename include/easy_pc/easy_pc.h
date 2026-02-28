@@ -61,7 +61,8 @@ typedef enum epc_parse_type_t
 {
     EPC_PARSE_TYPE_STRING,
     EPC_PARSE_TYPE_FILE,
-    EPC_PARSE_TYPE_FILENAME, /* Future extension for file path input */
+    EPC_PARSE_TYPE_FILENAME,
+    EPC_PARSE_TYPE_FD,
 } epc_parse_type_t;
 
 /**
@@ -80,6 +81,7 @@ typedef struct epc_parse_input_t
         char const * input_string;
         FILE * fp;
         char const * filename;
+        int fd;
     };
 } epc_parse_input_t;
 
@@ -1161,6 +1163,18 @@ EASY_PC_API epc_parse_session_t epc_parse_fp(epc_parser_t * top_parser, FILE * f
  *         This session MUST be destroyed with `easy_pc_parse_session_destroy`.
  */
 EASY_PC_API epc_parse_session_t epc_parse_file(epc_parser_t * top_parser, char const * filename);
+
+/**
+ * @brief Initiates a parsing operation with a given grammar and input from a file descriptor.
+ *
+ * This function initiates a streaming parse from the given file descriptor (fd).
+ * The parsing happens in a separate thread, while the main thread reads from the fd.
+ *
+ * @param top_parser The starting parser for the grammar.
+ * @param fd The file descriptor to read from.
+ * @return An `easy_pc_parse_session_t` structure.
+ */
+EASY_PC_API epc_parse_session_t epc_parse_fd(epc_parser_t * top_parser, int fd);
 
 /**
  * @brief Destroys an `easy_pc_parse_session_t` and frees all associated resources.
