@@ -60,6 +60,9 @@ You can customize the build process using CMake options:
 -   `BUILD_TESTS`: Controls whether unit tests are built.
     -   Default: `ON`
     -   To disable: `cmake -DBUILD_TESTS=OFF ..`
+-   `WITH_INPUT_STREAM_SUPPORT`: Enables support for streaming input from file descriptors (requires pthreads on Linux).
+    -   Default: `ON`
+    -   To disable: `cmake -DWITH_INPUT_STREAM_SUPPORT=OFF ..`
 
 To configure with specific options, run CMake like this from your `build` directory:
 
@@ -153,6 +156,35 @@ int main() {
 
     return exit_code;
 }
+```
+
+## Streaming Input Support
+
+`easy_pc` supports parsing from streaming sources (like sockets or pipes) where data arrives incrementally. When built with `WITH_INPUT_STREAM_SUPPORT=ON` (the default), you can use `epc_parse_fd()` to parse directly from a Linux file descriptor.
+
+The library uses a producer-consumer model: the main thread reads from the file descriptor and fills an internal buffer, while a dedicated parsing thread processes the data as it becomes available. "Greedy" parsers (like integers and doubles) are designed to block and wait for more data if the input stream ends prematurely, ensuring they only match complete tokens.
+
+**Example Usage:**
+
+```c
+#include "easy_pc/easy_pc.h"
+#include <unistd.h>
+
+// ... setup grammar p_top ...
+
+int pipe_fds[2];
+pipe(pipe_fds); // Or use a socket
+
+// The call below blocks until parsing completes or an error occurs.
+// Data is read from pipe_fds[0] in the background.
+epc_parse_session_t session = epc_parse_fd(p_top, pipe_fds[0]);
+
+if (!session.result.is_error) {
+    // Success!
+}
+
+epc_parse_session_destroy(&session);
+```
 
 ## Using Parser List Helper Functions (the `_l` functions)
 

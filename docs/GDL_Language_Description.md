@@ -37,10 +37,12 @@ String literals are sequences of characters enclosed in double quotes. They can 
 ### 2.3 Character Literals
 
 Character literals are single characters enclosed in single quotes. They can contain escaped single quotes (`'`), escaped backslashes (``), newline (`
-`), tab (`	`), and carriage return (``).
+`), tab (`	`), and carriage return (`
+`).
 
 *   **Syntax:** `'` `(char | ''' | '' | '
-' | '	' | '')` `'`
+' | '	' | '
+')` `'`
 *   **Examples:**
     ```gdl
     CharA = 'a';
@@ -333,7 +335,7 @@ int main(int argc, char **argv) {
     }
 
     // Attempt to parse the input string
-    epc_parse_session_t session = epc_parse_input(my_language_parser, input_string);
+    epc_parse_session_t session = epc_parse_str(my_language_parser, input_string);
 
     int exit_code = EXIT_SUCCESS;
 

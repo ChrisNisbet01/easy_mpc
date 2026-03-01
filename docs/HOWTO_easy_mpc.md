@@ -28,10 +28,11 @@ This guide uses examples inspired by the `simple_ast_test.cpp` provided with the
     *   `epc_parser_set_ast_action`
     *   Example AST Actions (`ast_action_type_t`)
     *   Implementing `enter_node` and `exit_node`
-7.  [Parsing Input (`epc_parse_input`)](#7-parsing-input-epc_parse_input)
+7.  [Parsing Input (`epc_parse_str`)](#7-parsing-input-epc_parse_str)
 8.  [Traversing the CPT/AST with `epc_cpt_visit_nodes`](#8-traversing-the-cptast-with-epc_cpt_visit_nodes)
 9.  [Debugging with CPT Printouts (`epc_cpt_to_string`)](#9-debugging-with-cpt-printouts-epc_cpt_to_string)
 10. [Full Example: Simple Arithmetic Parser](#10-full-example-simple-arithmetic-parser)
+11. [Streaming Input](#11-streaming-input)
 
 ---
 
@@ -258,8 +259,8 @@ The typical workflow involves:
 3.  **Set the top-level parser**: This is the `epc_parser_t` that represents the entire language you want to parse.
 
     ```c
-    // epc_parse_input will use p_expr as the starting point.
-    // epc_parse_input(p_expr, "1 + 2 * 3");
+    // epc_parse_str will use p_expr as the starting point.
+    // epc_parse_str(p_expr, "1 + 2 * 3");
     ```
 
 ## 6. Abstract Syntax Tree (AST) Construction with Semantic Actions
@@ -374,21 +375,22 @@ void my_ast_builder_exit_node(epc_cpt_node_t* pt_node, void* user_data) {
 }
 ```
 
-## 7. Parsing Input (`epc_parse_input`)
+## 7. Parsing Input (`epc_parse_str`)
 
-Once your grammar is defined and you have an input string, you can use `epc_parse_input` to initiate the parsing process.
+Once your grammar is defined and you have an input string, you can use `epc_parse_str` to initiate the parsing process. For convenience, several wrappers are available:
 
 ```c
-epc_parse_session_t epc_parse_input(
-    epc_parser_t * top_parser,
-    const char * input_string
-);
+// For static null-terminated strings
+epc_parse_session_t epc_parse_str(epc_parser_t * top_parser, char const * input_string);
+
+// For streaming from a Linux file descriptor (sockets, pipes, etc.)
+epc_parse_session_t epc_parse_fd(epc_parser_t * top_parser, int fd);
 ```
 
 The function returns an `epc_parse_session_t`, which contains the `epc_parse_result_t` (either a successful CPT root node or an error) and an internal context for cleanup.
 
 ```c
-epc_parse_session_t session = epc_parse_input(p_full_expression, "1 + 2 * 3");
+epc_parse_session_t session = epc_parse_str(p_full_expression, "1 + 2 * 3");
 
 if (!session.result.is_error) {
     epc_cpt_node_t* cpts_root = session.result.data.success;
@@ -480,7 +482,7 @@ This section would typically contain a complete, runnable C code example demonst
     *   Crucially, define recursive rules like `expression = term ( ( '+' | '-' ) term )*` and `term = factor ( ( '*' | '/' ) factor )*`.
     *   Assign `epc_parser_set_ast_action` to relevant parsers (e.g., `AST_ACTION_CREATE_NUMBER_FROM_CONTENT` for numbers, `AST_ACTION_CREATE_OPERATOR_FROM_CHAR` for operators, `AST_ACTION_BUILD_BINARY_EXPRESSION` for combining terms and factors).
 6.  **Parsing Function**:
-    *   Call `epc_parse_input` top-level parser and input string.
+    *   Call `epc_parse_str` top-level parser and input string.
 7.  **CPT Visualization**:
     *   If parsing succeeds, call `epc_cpt_to_string` to print the CPT.
 8.  **AST Building**:
@@ -493,3 +495,56 @@ This section would typically contain a complete, runnable C code example demonst
     *   Free up all parsers that were created during the construction of the grammar.
 
 By following this structure and filling in the detailed parser definitions and AST action logic, you can create powerful and flexible parsers using `easy_pc`.
+
+## 11. Streaming Input
+
+Starting with version 1.1, `easy_pc` supports streaming input from Linux file descriptors (e.g., sockets, pipes, character devices). This allows you to parse data as it arrives over a network or from another process without waiting for the entire input to be available in memory.
+
+### How it Works
+
+Streaming is implemented using a producer-consumer model:
+1.  **Producer (Main Thread)**: When you call `epc_parse_fd()`, the main thread enters a loop that reads from the provided file descriptor and appends data to an internal memory-mapped buffer.
+2.  **Consumer (Parsing Thread)**: A dedicated thread is spawned to run the parsing logic. When it needs more data than is currently available, it automatically blocks and waits for the producer to signal that new data has arrived.
+
+### Greedy Parsers and Blocking
+
+Terminal parsers like `epc_int()`, `epc_double()`, and `epc_lexeme()` (which consumes whitespace and comments) are designed to be "streaming-aware." If they encounter the end of the currently available data while in the middle of a token, they will wait for more data to ensure they don't return a partial match (e.g., parsing `123` from a stream that will eventually deliver `12345`).
+
+### Example: Parsing from a Pipe
+
+```c
+#include "easy_pc/easy_pc.h"
+#include <unistd.h>
+
+void parse_from_pipe(epc_parser_t * grammar) {
+    int pipe_fds[2];
+    if (pipe(pipe_fds) != 0) return;
+
+    // In a real scenario, another process/thread would write to pipe_fds[1]
+    
+    // This call blocks until the grammar is satisfied, 
+    // an error occurs, or the write-end of the pipe is closed (EOF).
+    epc_parse_session_t session = epc_parse_fd(grammar, pipe_fds[0]);
+
+    if (!session.result.is_error) {
+        printf("Successfully parsed streaming input!\n");
+    }
+
+    epc_parse_session_destroy(&session);
+    close(pipe_fds[1]);
+}
+```
+
+### Build-time Configuration
+
+Streaming support requires `pthreads` and is enabled by default. You can exclude it at compile-time to reduce dependencies or binary size:
+
+```bash
+# Enable (Default)
+cmake -DWITH_INPUT_STREAM_SUPPORT=ON ..
+
+# Disable
+cmake -DWITH_INPUT_STREAM_SUPPORT=OFF ..
+```
+
+When disabled, the `epc_parse_fd` function and related threading logic are removed from the library.

@@ -253,7 +253,7 @@ Finally, when parsing input, create an instance of the registry, initialize it, 
 
 // ... parser setup
 
-epc_parse_session_t parse_session = epc_parse_input(your_grammar_root_parser, input_string);
+epc_parse_session_t parse_session = epc_parse_str(your_grammar_root_parser, input_string);
 
 if (!parse_session.result.is_error) {
     epc_ast_hook_registry_t * ast_registry = epc_ast_hook_registry_create(AST_ACTION_MAX);
