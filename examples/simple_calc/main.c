@@ -44,8 +44,9 @@ main(int argc, char ** argv)
 
     epc_parse_input_t input = {.type = EPC_PARSE_TYPE_STRING, .input_string = input_expr};
 
-    epc_compile_result_t compile_result
-        = epc_parse_and_build_ast(formula_parser, input, AST_ACTION_MAX, simple_calc_ast_hook_registry_init, NULL);
+    epc_compile_result_t compile_result = epc_parse_and_build_ast(
+        formula_parser, input, AST_ACTION_MAX, simple_calc_ast_hook_registry_init, NULL, NULL
+    );
 
     int exit_code = EXIT_FAILURE;
 

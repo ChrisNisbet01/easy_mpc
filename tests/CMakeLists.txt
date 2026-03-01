@@ -337,3 +337,26 @@ add_test(
     NAME SatisfyTest
     COMMAND SatisfyTest
 )
+
+add_executable(WrapTest
+    AllTests.cpp
+    WrapTest.cpp
+)
+
+add_dependencies(all_unit_tests WrapTest)
+
+target_include_directories(WrapTest PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lib
+)
+
+target_link_libraries(WrapTest PRIVATE
+    easy_pc_shared
+    CppUTest
+    CppUTestExt
+)
+
+add_test(
+    NAME WrapTest
+    COMMAND WrapTest
+)

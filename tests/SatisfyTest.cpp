@@ -24,7 +24,9 @@ TEST_GROUP(SatisfyTest)
 
     epc_parse_result_t parse(epc_parser_t * parser, char const * input)
     {
-        session = epc_parse_str(parser, input);
+        void * user_ctx = NULL; // No user context for these tests
+
+        session = epc_parse_str(parser, input, user_ctx);
         return session.result;
     }
 
@@ -34,14 +36,16 @@ TEST_GROUP(SatisfyTest)
         epc_parser_list_free(list);
     }
 
-    static bool is_char_a(epc_cpt_node_t * node, void * user_ctx)
+    static bool is_char_a(epc_cpt_node_t * node, epc_parser_ctx_t * parse_ctx, void * user_ctx)
     {
+        (void)parse_ctx;
         (void)user_ctx;
         return node->len == 1 && node->content[0] == 'a';
     }
 
-    static bool is_length_3(epc_cpt_node_t * node, void * user_ctx)
+    static bool is_length_3(epc_cpt_node_t * node, epc_parser_ctx_t * parse_ctx, void * user_ctx)
     {
+        (void)parse_ctx;
         (void)user_ctx;
         return node->len == 3;
     }
@@ -115,8 +119,9 @@ TEST(SatisfyTest, PSatisfyPreservesSemanticOffsets)
     epc_parser_t * p_satisfy = epc_satisfy_l(list, "satisfy_digit", p_lexeme, "expected digit", is_char_a, NULL);
 
     // We'll use a predicate that always returns true for this test
-    auto always_true = [](epc_cpt_node_t * node, void * user_ctx) -> bool {
+    auto always_true = [](epc_cpt_node_t * node, epc_parser_ctx_t * parse_ctx, void * user_ctx) -> bool {
         (void)node;
+        (void)parse_ctx;
         (void)user_ctx;
         return true;
     };

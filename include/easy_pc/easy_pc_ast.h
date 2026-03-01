@@ -182,7 +182,8 @@ typedef void (*epc_ast_registry_init_cb)(epc_ast_hook_registry_t * registry);
  * @param input The input (string or file) to parse.
  * @param ast_action_count The number of AST actions (max index + 1).
  * @param registry_init_cb A callback function to initialize the hook registry.
- * @param user_data Optional user data to be passed to all AST callbacks.
+ * @param parse_user_data Optional user data to be assigned to the parse context.
+ * @param ast_user_data Optional user data to be passed to all AST callbacks.
  * @return An 'epc_compile_result_t' struct containing the result.
  */
 EASY_PC_API epc_compile_result_t epc_parse_and_build_ast(
@@ -190,7 +191,8 @@ EASY_PC_API epc_compile_result_t epc_parse_and_build_ast(
     epc_parse_input_t input,
     int ast_action_count,
     epc_ast_registry_init_cb registry_init_cb,
-    void * user_data
+    void * parse_user_data,
+    void * ast_user_data
 );
 
 /**

@@ -82,6 +82,7 @@ parser_data_free(parser_data_type_st * data)
     case PARSER_DATA_TYPE_DELIMITED:
     case PARSER_DATA_TYPE_LEXEME:
     case PARSER_DATA_TYPE_PREDICATE:
+    case PARSER_DATA_TYPE_WRAP:
         /* Nothing to do. */
         break;
 
@@ -3252,6 +3253,7 @@ epc_parser_duplicate(epc_parser_t * const dst, epc_parser_t const * const src)
     case PARSER_DATA_TYPE_DELIMITED:
     case PARSER_DATA_TYPE_LEXEME:
     case PARSER_DATA_TYPE_PREDICATE:
+    case PARSER_DATA_TYPE_WRAP:
         dst->data = src->data;
         break;
 
@@ -3296,7 +3298,7 @@ psatisfy_parse_fn(epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offs
     }
     epc_parser_error_free(original_furthest_error);
 
-    if (!self->data.predicate.predicate_fn(token_result.data.success, self->data.predicate.user_ctx))
+    if (!self->data.predicate.predicate_fn(token_result.data.success, ctx, self->data.predicate.parser_data))
     {
         char found_str[FOUND_BUFFER_SIZE];
         snprintf(
@@ -3337,8 +3339,8 @@ epc_satisfy(
     char const * name,
     epc_parser_t * token_parser,
     char const * message_on_failure,
-    epc_parser_predicate_fn predicate,
-    void * user_ctx
+    epc_satisfy_parser_predicate_fn predicate,
+    void * parser_data
 )
 {
     epc_parser_t * p = epc_parser_allocate(name, "satisfy", psatisfy_parse_fn);
@@ -3349,8 +3351,60 @@ epc_satisfy(
     p->data.type = PARSER_DATA_TYPE_PREDICATE;
     p->data.predicate.parser = token_parser;
     p->data.predicate.predicate_fn = predicate;
-    p->data.predicate.user_ctx = user_ctx;
+    p->data.predicate.parser_data = parser_data;
     p->expected_value = message_on_failure;
+
+    return p;
+}
+
+static epc_parse_result_t
+pwrap_parse_fn(epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset)
+{
+    wrap_data_t const * wrap_data = &self->data.wrap;
+    epc_parser_t * wrapped_parser = wrap_data->parser;
+    epc_wrap_callbacks_t callbacks = wrap_data->callbacks;
+    void * parser_data = wrap_data->parser_data;
+
+    if (callbacks.on_entry != NULL)
+    {
+        callbacks.on_entry(wrapped_parser, ctx, parser_data);
+    }
+    epc_parser_error_t * original_furthest_error = parser_furthest_error_copy(ctx);
+    epc_parse_result_t result = parse(wrapped_parser, ctx, input_offset);
+
+    if (callbacks.on_exit != NULL && !callbacks.on_exit(result, ctx, parser_data))
+    {
+        // If on_exit returns false, we treat it as a failure of the wrapper parser.
+        char found_str[FOUND_BUFFER_SIZE];
+        if (!result.is_error) /* The callback wishes to override the child parse success to be an error. */
+        {
+            snprintf(
+                found_str, sizeof(found_str), "node '%.*s'", (int)result.data.success->len, result.data.success->content
+            );
+            parser_furthest_error_restore(ctx, &original_furthest_error);
+            epc_parser_result_cleanup(&result);
+            return epc_parser_error_result(
+                ctx, input_offset, "on_exit callback indicated failure", parser_get_expected_str(self), found_str
+            );
+        }
+    }
+
+    epc_parser_error_free(original_furthest_error);
+    return result;
+}
+
+EASY_PC_API epc_parser_t *
+epc_wrap(char const * name, epc_parser_t * wrapped_parser, epc_wrap_callbacks_t callbacks, void * parser_data)
+{
+    epc_parser_t * p = epc_parser_allocate(name, "wrap", pwrap_parse_fn);
+    if (p == NULL)
+    {
+        return NULL;
+    }
+    p->data.type = PARSER_DATA_TYPE_WRAP;
+    p->data.wrap.parser = wrapped_parser;
+    p->data.wrap.callbacks = callbacks;
+    p->data.wrap.parser_data = parser_data;
 
     return p;
 }

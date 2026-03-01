@@ -401,11 +401,12 @@ epc_parse_and_build_ast(
     epc_parse_input_t input,
     int ast_action_count,
     epc_ast_registry_init_cb registry_init_cb,
-    void * user_data
+    void * parse_user_data,
+    void * ast_user_data
 )
 {
     epc_compile_result_t result = {0};
-    epc_parse_session_t parse_session = epc_parse_input(parser, input);
+    epc_parse_session_t parse_session = epc_parse_input(parser, input, parse_user_data);
 
     if (parse_session.result.is_error)
     {
@@ -456,7 +457,7 @@ epc_parse_and_build_ast(
             }
 
             epc_ast_result_t ast_build_result
-                = epc_ast_build(parse_session.result.data.success, ast_registry, user_data);
+                = epc_ast_build(parse_session.result.data.success, ast_registry, ast_user_data);
 
             if (ast_build_result.has_error)
             {

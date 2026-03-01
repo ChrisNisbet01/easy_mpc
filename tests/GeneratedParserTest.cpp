@@ -29,9 +29,16 @@ TEST_GROUP(GeneratedParserTest)
         gdl_ast_hook_registry_init(ast_registry, NULL); // No specific user_data needed
     }
 
+    epc_parse_session_t parse(epc_parser_t * parser, char const * input)
+    {
+        void * user_ctx = NULL; // No user context for these tests
+        session = epc_parse_str(parser, input, user_ctx);
+        return session;
+    }
+
     void generate_ast(char const * gdl_input)
     {
-        session = epc_parse_str(gdl_grammar, gdl_input);
+        session = parse(gdl_grammar, gdl_input);
         CHECK_FALSE(session.result.is_error);
         ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);
 

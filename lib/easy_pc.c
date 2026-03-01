@@ -31,6 +31,8 @@ struct epc_parser_ctx_t
     mmap_input_buffer_t mmap_buffer; /* Internal buffer management for input string, using mmap for large inputs. */
     epc_parser_error_t * furthest_error;
 
+    void * user_ctx; /* User-defined context that can be used in predicates (e.g. epc_wrap()). */
+
 #ifdef WITH_INPUT_STREAM_SUPPORT
     pthread_mutex_t mutex;
     pthread_cond_t cond;
@@ -255,6 +257,13 @@ internal_create_parse_ctx_streaming(void)
 }
 #endif
 
+EASY_PC_API
+void *
+parse_ctx_get_user_ctx(epc_parser_ctx_t const * ctx)
+{
+    return ctx ? ctx->user_ctx : NULL;
+}
+
 // Internal parser_ctx_t destruction (for parse results)
 static void
 internal_destroy_parse_ctx(epc_parser_ctx_t * ctx)
@@ -468,7 +477,7 @@ parse_in_thread(epc_parser_t * top_parser, epc_parser_ctx_t * ctx, epc_parse_inp
 #endif
 
 EASY_PC_HIDDEN epc_parse_session_t
-epc_parse_input(epc_parser_t * top_parser, epc_parse_input_t input)
+epc_parse_input(epc_parser_t * top_parser, epc_parse_input_t input, void * user_ctx)
 {
     epc_parse_session_t session = {0};
 
@@ -539,6 +548,8 @@ epc_parse_input(epc_parser_t * top_parser, epc_parse_input_t input)
         return session;
     }
     session.internal_parse_ctx = ctx;
+    ctx->user_ctx = user_ctx;
+
 
 #ifdef WITH_INPUT_STREAM_SUPPORT
     if (ctx->is_streaming)
@@ -578,35 +589,35 @@ epc_parse_input(epc_parser_t * top_parser, epc_parse_input_t input)
 }
 
 EASY_PC_API epc_parse_session_t
-epc_parse_str(epc_parser_t * top_parser, char const * input_string)
+epc_parse_str(epc_parser_t * top_parser, char const * input_string, void * user_ctx)
 {
     epc_parse_input_t input = {.type = EPC_PARSE_TYPE_STRING, .input_string = input_string};
     
-    return epc_parse_input(top_parser, input);
+    return epc_parse_input(top_parser, input, user_ctx);
 }
 
 EASY_PC_API epc_parse_session_t
-epc_parse_fp(epc_parser_t * top_parser, FILE * fp)
+epc_parse_fp(epc_parser_t * top_parser, FILE * fp, void * user_ctx)
 {
     epc_parse_input_t input = {.type = EPC_PARSE_TYPE_FILE, .fp = fp};
     
-    return epc_parse_input(top_parser, input);
+    return epc_parse_input(top_parser, input, user_ctx);
 }
 
-EASY_PC_API epc_parse_session_t epc_parse_file(epc_parser_t * top_parser, char const * filename)
+EASY_PC_API epc_parse_session_t epc_parse_file(epc_parser_t * top_parser, char const * filename, void * user_ctx)
 {
     epc_parse_input_t input = {.type = EPC_PARSE_TYPE_FILENAME, .filename = filename};
     
-    return epc_parse_input(top_parser, input);
+    return epc_parse_input(top_parser, input, user_ctx);
 }
 
 #ifdef WITH_INPUT_STREAM_SUPPORT
 EASY_PC_API epc_parse_session_t
-epc_parse_fd(epc_parser_t * top_parser, int fd)
+epc_parse_fd(epc_parser_t * top_parser, int fd, void * user_ctx)
 {
     epc_parse_input_t input = {.type = EPC_PARSE_TYPE_FD, .fd = fd};
 
-    return epc_parse_input(top_parser, input);
+    return epc_parse_input(top_parser, input, user_ctx);
 }
 #endif
 

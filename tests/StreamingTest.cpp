@@ -124,6 +124,14 @@ TEST_GROUP(StreamingTest)
         }
         CHECK_TRUE(result.data.success != NULL);
     }
+
+    epc_parse_session_t parse_fd(epc_parser_t * parser, int fd)
+    {
+        void * user_ctx = NULL; // No user context for these tests
+
+        session = epc_parse_fd(parser, fd, user_ctx);
+        return session;
+    }
 };
 
 TEST(StreamingTest, StreamingBasicCharTest)
@@ -131,7 +139,7 @@ TEST(StreamingTest, StreamingBasicCharTest)
     int fd = start_producer("a", 10);
 
     epc_parser_t * p = epc_char_l(list, NULL, 'a');
-    session = epc_parse_fd(p, fd);
+    session = parse_fd(p, fd);
 
     check_is_success(session.result);
     STRNCMP_EQUAL("a", session.result.data.success->content, 1);
@@ -143,7 +151,7 @@ TEST(StreamingTest, StreamingBasicStringTest)
     int fd = start_producer("hello", 10);
 
     epc_parser_t * p = epc_string_l(list, NULL, "hello");
-    session = epc_parse_fd(p, fd);
+    session = parse_fd(p, fd);
     check_is_success(session.result);
     STRNCMP_EQUAL("hello", session.result.data.success->content, 5);
     LONGS_EQUAL(5, session.result.data.success->len);
@@ -154,7 +162,7 @@ TEST(StreamingTest, StreamingIntTest)
     int fd = start_producer("12345 ", 10); // Note the space to terminate parsing
 
     epc_parser_t * p = epc_int_l(list, NULL);
-    session = epc_parse_fd(p, fd);
+    session = parse_fd(p, fd);
 
     check_is_success(session.result);
     STRNCMP_EQUAL("12345", session.result.data.success->content, 5);
@@ -166,7 +174,7 @@ TEST(StreamingTest, StreamingDoubleTest)
     int fd = start_producer("3.14159 ", 10); // Note the space to terminate parsing
 
     epc_parser_t * p = epc_double_l(list, NULL);
-    session = epc_parse_fd(p, fd);
+    session = parse_fd(p, fd);
 
     check_is_success(session.result);
     STRNCMP_EQUAL("3.14159", session.result.data.success->content, 7);
@@ -178,7 +186,7 @@ TEST(StreamingTest, StreamingScientificDoubleTest)
     int fd = start_producer("1.23e-4 ", 10);
 
     epc_parser_t * p = epc_double_l(list, NULL);
-    session = epc_parse_fd(p, fd);
+    session = parse_fd(p, fd);
 
     check_is_success(session.result);
     STRNCMP_EQUAL("1.23e-4", session.result.data.success->content, 7);
@@ -192,7 +200,7 @@ TEST(StreamingTest, StreamingAmbiguousDoubleTest)
     int fd = start_producer_fragments(2, frags, delays);
 
     epc_parser_t * p = epc_double_l(list, NULL);
-    session = epc_parse_fd(p, fd);
+    session = parse_fd(p, fd);
 
     check_is_success(session.result);
     STRNCMP_EQUAL("123e-4", session.result.data.success->content, 6);
@@ -209,7 +217,7 @@ TEST(StreamingTest, StreamingSequenceTest)
     epc_parser_t * p_space = epc_space_l(list, NULL);
     epc_parser_t * p_seq = epc_and_l(list, NULL, 5, p_int, p_space, p_int, p_space, p_int);
 
-    session = epc_parse_fd(p_seq, fd);
+    session = parse_fd(p_seq, fd);
 
     check_is_success(session.result);
     LONGS_EQUAL(5, session.result.data.success->children_count);
@@ -222,7 +230,7 @@ TEST(StreamingTest, StreamingEOFErrorTest)
     int fd = start_producer("hello", 10); // producer closes fd after "hello"
 
     epc_parser_t * p = epc_string_l(list, NULL, "hello world");
-    session = epc_parse_fd(p, fd);
+    session = parse_fd(p, fd);
 
     CHECK_TRUE(session.result.is_error);
     STRCMP_EQUAL("Unexpected end of input", session.result.data.error->message);
@@ -237,7 +245,7 @@ TEST(StreamingTest, StreamingLexemeTest)
     epc_parser_t * p_int = epc_int_l(list, NULL);
     epc_parser_t * p_lex = epc_lexeme_l(list, NULL, p_int);
 
-    session = epc_parse_fd(p_lex, fd);
+    session = parse_fd(p_lex, fd);
 
     check_is_success(session.result);
     STRNCMP_EQUAL("123", epc_cpt_node_get_semantic_content(session.result.data.success), 3);
@@ -251,7 +259,7 @@ TEST(StreamingTest, StreamingCppCommentTest)
     int fd = start_producer_fragments(3, frags, delays);
 
     epc_parser_t * p = epc_cpp_comment_l(list, NULL);
-    session = epc_parse_fd(p, fd);
+    session = parse_fd(p, fd);
 
     check_is_success(session.result);
     STRNCMP_EQUAL("// first part\n", session.result.data.success->content, 14);
@@ -265,7 +273,7 @@ TEST(StreamingTest, StreamingCCommentTest)
     int fd = start_producer_fragments(5, frags, delays);
 
     epc_parser_t * p = epc_c_comment_l(list, NULL);
-    session = epc_parse_fd(p, fd);
+    session = parse_fd(p, fd);
 
     check_is_success(session.result);
     STRNCMP_EQUAL("/* first part second part*/", session.result.data.success->content, 27);

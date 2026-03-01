@@ -62,7 +62,7 @@ main(int argc, char ** argv)
     epc_parse_input_t input = {.type = EPC_PARSE_TYPE_STRING, .input_string = input_string};
 
     epc_compile_result_t compile_result = epc_parse_and_build_ast(
-        json_pointer_parser, input, JSON_POINTER_AST_ACTION_COUNT__, json_pointer_ast_hook_registry_init, NULL
+        json_pointer_parser, input, JSON_POINTER_AST_ACTION_COUNT__, json_pointer_ast_hook_registry_init, NULL, NULL
     );
 
     if (!compile_result.success)

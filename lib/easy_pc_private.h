@@ -143,9 +143,16 @@ typedef struct
 typedef struct
 {
     epc_parser_t * parser; // A parser to produce a token for the predicate
-    epc_parser_predicate_fn predicate_fn;
-    void * user_ctx; // User-defined context passed to the predicate function
+    epc_satisfy_parser_predicate_fn predicate_fn;
+    void * parser_data; // User-defined context passed to the predicate function
 } predicate_data_t;
+
+typedef struct
+{
+    epc_parser_t * parser; // The parser to wrap
+    epc_wrap_callbacks_t callbacks;
+    void * parser_data;
+} wrap_data_t;
 
 typedef enum parser_data_type_t
 {
@@ -159,6 +166,7 @@ typedef enum parser_data_type_t
     PARSER_DATA_TYPE_DELIMITED,
     PARSER_DATA_TYPE_LEXEME,
     PARSER_DATA_TYPE_PREDICATE,
+    PARSER_DATA_TYPE_WRAP,
 } parser_data_type_t;
 
 typedef struct parser_data_type_st
@@ -175,6 +183,7 @@ typedef struct parser_data_type_st
         delimited_data_t delimited;
         lexeme_data_t lexeme;
         predicate_data_t predicate;
+        wrap_data_t wrap;
     };
 } parser_data_type_st;
 
@@ -207,7 +216,7 @@ struct epc_ast_hook_registry_t
 /**
  * @brief Initiates a parsing operation with a given grammar and input.
  */
-EASY_PC_HIDDEN epc_parse_session_t epc_parse_input(epc_parser_t * top_parser, epc_parse_input_t input);
+EASY_PC_HIDDEN epc_parse_session_t epc_parse_input(epc_parser_t * top_parser, epc_parse_input_t input, void * user_ctx);
 
 EASY_PC_HIDDEN
 epc_parse_result_t

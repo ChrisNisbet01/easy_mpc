@@ -21,7 +21,9 @@ TEST_GROUP(ErrorHandling)
 
     epc_parse_result_t parse(epc_parser_t * parser, char const * input)
     {
-        session = epc_parse_str(parser, input);
+        void * user_ctx = NULL; // No user context for these tests
+
+        session = epc_parse_str(parser, input, user_ctx);
         return session.result;
     }
 

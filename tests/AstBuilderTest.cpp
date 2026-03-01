@@ -281,6 +281,14 @@ TEST_GROUP(AstBuilderTest)
         mock().checkExpectations();
         mock().clear();
     }
+
+    epc_parse_session_t parse(epc_parser_t * parser, char const * input)
+    {
+        void * user_ctx = NULL; // No user context for these tests
+
+        session = epc_parse_str(parser, input, user_ctx);
+        return session;
+    }
 };
 
 // --- Single Parser Single Action Test ---
@@ -290,7 +298,7 @@ TEST(AstBuilderTest, SingleParserSingleAction)
     epc_parser_set_ast_action(p_root, ACTION_NUMBER);
     grammar_root = p_root;
 
-    session = epc_parse_str(grammar_root, "123");
+    session = parse(grammar_root, "123");
     CHECK_FALSE(session.result.is_error);
 
     // Expected mock calls
@@ -324,7 +332,7 @@ TEST(AstBuilderTest, BuildsSimpleNumberAst)
     epc_parser_set_ast_action(p_root, ACTION_ROOT);
     grammar_root = p_root;
 
-    session = epc_parse_str(grammar_root, "123");
+    session = parse(grammar_root, "123");
     CHECK_FALSE(session.result.is_error);
 
     // Expected calls during AST building (reverse order of CPT traversal exit)
@@ -365,7 +373,7 @@ TEST(AstBuilderTest, BuildsSimpleIdentifierAstWithDefaultAction)
     // p_root has no specific action, should default to pushing its child (identifier)
     grammar_root = p_root;
 
-    session = epc_parse_str(grammar_root, "abc");
+    session = parse(grammar_root, "abc");
     CHECK_FALSE(session.result.is_error);
 
     mock().expectOneCall("enter_node_cb").withStringParameter("name", "Root");
@@ -407,7 +415,7 @@ TEST(AstBuilderTest, BuildsBinaryExpressionAst)
     epc_parser_set_ast_action(p_root, ACTION_ROOT);
     grammar_root = p_root;
 
-    session = epc_parse_str(grammar_root, "1+2");
+    session = parse(grammar_root, "1+2");
     CHECK_FALSE(session.result.is_error);
 
     // Expected CPT traversal and action calls
@@ -485,7 +493,7 @@ TEST(AstBuilderTest, HandlesErrorDuringActionCallback)
         }
     );
 
-    session = epc_parse_str(grammar_root, "123");
+    session = parse(grammar_root, "123");
     CHECK_FALSE(session.result.is_error);
 
     mock().expectOneCall("enter_node_cb").withStringParameter("name", "Root");
@@ -516,7 +524,7 @@ TEST(AstBuilderTest, PrunesAstNodes)
     epc_parser_set_ast_action(p_root, ACTION_ROOT);
     grammar_root = p_root;
 
-    session = epc_parse_str(grammar_root, "skipme123");
+    session = parse(grammar_root, "skipme123");
     CHECK_FALSE(session.result.is_error);
 
     mock().expectOneCall("enter_node_cb").withStringParameter("name", "Root");
@@ -599,7 +607,7 @@ TEST(AstBuilderTest, AstStackGrowsDynamically)
     }
     input[offset] = '\0';
 
-    session = epc_parse_str(grammar_root, input);
+    session = parse(grammar_root, input);
     CHECK_FALSE(session.result.is_error);
 
     mock().ignoreOtherCalls(); // Ignore enter_node_cb calls that are not explicitly expected for this dynamic test.
@@ -644,7 +652,7 @@ TEST(AstBuilderTest, DefaultActionPushesChildrenBack)
     epc_parser_set_ast_action(p_root, ACTION_ROOT);
     grammar_root = p_root;
 
-    session = epc_parse_str(grammar_root, "12");
+    session = parse(grammar_root, "12");
     CHECK_FALSE(session.result.is_error);
 
     mock().expectOneCall("enter_node_cb").withStringParameter("name", "Root");
@@ -720,7 +728,7 @@ TEST(AstBuilderTest, ErrorRecoveryFreesPartialAst)
     epc_parser_set_ast_action(p_root, ACTION_ROOT);
     grammar_root = p_root;
 
-    session = epc_parse_str(grammar_root, "1+2");
+    session = parse(grammar_root, "1+2");
     CHECK_FALSE(session.result.is_error);
 
     /*

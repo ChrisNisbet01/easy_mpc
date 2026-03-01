@@ -25,6 +25,14 @@ TEST_GROUP(GdlAstBuilderTest)
         gdl_ast_hook_registry_init(ast_registry, NULL); // No specific user_data needed
     }
 
+    epc_parse_session_t parse(epc_parser_t * parser, char const * input)
+    {
+        void * user_ctx = NULL; // No user context for these tests
+
+        session = epc_parse_str(parser, input, user_ctx);
+        return session;
+    }
+
     void teardown() override
     {
         epc_parse_session_destroy(&session);
@@ -36,7 +44,7 @@ TEST_GROUP(GdlAstBuilderTest)
 TEST(GdlAstBuilderTest, SimpleRuleStringLiteral)
 {
     char const * gdl_input = "MyRule = \"hello\";";
-    session = epc_parse_str(gdl_grammar, gdl_input);
+    session = parse(gdl_grammar, gdl_input);
 
     CHECK_FALSE(session.result.is_error);
     ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);
@@ -53,7 +61,7 @@ TEST(GdlAstBuilderTest, SimpleRuleStringLiteral)
 TEST(GdlAstBuilderTest, RuleDefinitionWithCharRange)
 {
     char const * gdl_input = "MyRangeRule = [a-z];";
-    session = epc_parse_str(gdl_grammar, gdl_input);
+    session = parse(gdl_grammar, gdl_input);
 
     CHECK_FALSE(session.result.is_error);
     ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);
@@ -90,7 +98,7 @@ TEST(GdlAstBuilderTest, RuleDefinitionWithCharRange)
 TEST(GdlAstBuilderTest, RuleDefinitionWithSemanticAction)
 {
     char const * gdl_input = "MyActionRule = 'a' @my_action;";
-    session = epc_parse_str(gdl_grammar, gdl_input);
+    session = parse(gdl_grammar, gdl_input);
 
     CHECK_FALSE(session.result.is_error);
     ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);
@@ -134,7 +142,7 @@ TEST(GdlAstBuilderTest, RuleDefinitionWithSemanticAction)
 TEST(GdlAstBuilderTest, RuleDefinitionWithSequence)
 {
     char const * gdl_input = "MySeqRule = 'a' 'b';";
-    session = epc_parse_str(gdl_grammar, gdl_input);
+    session = parse(gdl_grammar, gdl_input);
 
     CHECK_FALSE(session.result.is_error);
     ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);
@@ -181,7 +189,7 @@ TEST(GdlAstBuilderTest, RuleDefinitionWithSequence)
 TEST(GdlAstBuilderTest, RuleDefinitionWithAlternative)
 {
     char const * gdl_input = "MyAltRule = 'a' | 'b';";
-    session = epc_parse_str(gdl_grammar, gdl_input);
+    session = parse(gdl_grammar, gdl_input);
 
     CHECK_FALSE(session.result.is_error);
     ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);
@@ -227,7 +235,7 @@ TEST(GdlAstBuilderTest, RuleDefinitionWithAlternative)
 TEST(GdlAstBuilderTest, RuleDefinitionWithRepetition)
 {
     char const * gdl_input = "MyStarRule = 'a'*;";
-    session = epc_parse_str(gdl_grammar, gdl_input);
+    session = parse(gdl_grammar, gdl_input);
 
     CHECK_FALSE(session.result.is_error);
     ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);
@@ -272,7 +280,7 @@ TEST(GdlAstBuilderTest, RuleDefinitionWithRepetition)
 TEST(GdlAstBuilderTest, RuleDefinitionWithComplexOptional)
 {
     char const * gdl_input = "MyOptRule = ('a' | 'b')?;";
-    session = epc_parse_str(gdl_grammar, gdl_input);
+    session = parse(gdl_grammar, gdl_input);
 
     CHECK_FALSE(session.result.is_error);
     ast_build_result = epc_ast_build(session.result.data.success, ast_registry, NULL);

@@ -153,7 +153,7 @@ main(int argc, char * argv[])
     }
 
     epc_compile_result_t compile_result
-        = epc_parse_and_build_ast(json_root_parser, input, JSON_ACTION_MAX, json_ast_hook_registry_init, NULL);
+        = epc_parse_and_build_ast(json_root_parser, input, JSON_ACTION_MAX, json_ast_hook_registry_init, NULL, NULL);
 
     if (!compile_result.success)
     {

@@ -79,7 +79,8 @@ main(int argc, char ** argv)
     }
 
     // 2. Parse the input GDL content
-    epc_parse_session_t session = epc_parse_file(gdl_grammar_parser, gdl_filepath);
+    void * user_ctx = NULL; // No user context needed for this example
+    epc_parse_session_t session = epc_parse_file(gdl_grammar_parser, gdl_filepath, user_ctx);
 
     // 3. Process the result
     if (session.result.is_error)

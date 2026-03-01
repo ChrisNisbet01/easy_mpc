@@ -41,6 +41,13 @@ TEST_GROUP(GdlParserTest)
         FAIL(error_msg_buffer);
     }
 
+    epc_parse_session_t parse(epc_parser_t * parser, char const * input)
+    {
+        void * user_ctx = NULL; // No user context for these tests
+        session = epc_parse_str(parser, input, user_ctx);
+        return session;
+    }
+
     void teardown()
     {
         epc_parse_session_destroy(&session);
@@ -51,7 +58,7 @@ TEST_GROUP(GdlParserTest)
 TEST(GdlParserTest, SimpleFailTerminalWithStringShouldParse)
 {
     char const * gdl_input = "MyRule = fail(\"failure message\");";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -62,7 +69,7 @@ TEST(GdlParserTest, SimpleFailTerminalWithStringShouldParse)
 TEST(GdlParserTest, SimpleFailTerminalWithoutStringShouldntParse)
 {
     char const * gdl_input = "MyRule = fail;";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     CHECK(session.result.is_error);
     STRCMP_CONTAINS("Unexpected character", session.result.data.error->message);
@@ -73,7 +80,7 @@ TEST(GdlParserTest, SimpleFailTerminalWithoutStringShouldntParse)
 TEST(GdlParserTest, ParseSimpleIdentifierRule)
 {
     char const * gdl_input = "MyRule = alpha;";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -176,7 +183,7 @@ TEST(GdlParserTest, ParseSimpleIdentifierRule)
 TEST(GdlParserTest, ParseSimpleStringLiteralRule)
 {
     char const * gdl_input = "MyStringRule = \"hello world\";";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -244,7 +251,7 @@ TEST(GdlParserTest, ParseSimpleStringLiteralRule)
 TEST(GdlParserTest, ParseSimpleCharLiteralRule)
 {
     char const * gdl_input = "MyCharRule = 'c';";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -308,7 +315,7 @@ TEST(GdlParserTest, ParseSimpleCharLiteralRule)
 TEST(GdlParserTest, ParseSimpleCharRangeRule)
 {
     char const * gdl_input = "MyRangeRule = [a-z];";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -372,7 +379,7 @@ TEST(GdlParserTest, ParseSimpleCharRangeRule)
 TEST(GdlParserTest, ParseSimpleSequenceRule)
 {
     char const * gdl_input = "MySeqRule = alpha digit;";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -468,7 +475,7 @@ TEST(GdlParserTest, ParseSimpleSequenceRule)
 TEST(GdlParserTest, ParseSimpleChoiceRule)
 {
     char const * gdl_input = "MyChoiceRule = alpha | digit;";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -588,7 +595,7 @@ TEST(GdlParserTest, ParseSimpleChoiceRule)
 TEST(GdlParserTest, ParseSimpleOptionalRule)
 {
     char const * gdl_input = "MyOptionalRule = alpha?;";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -696,7 +703,7 @@ TEST(GdlParserTest, ParseSimpleOptionalRule)
 TEST(GdlParserTest, ParseSimplePlusRule)
 {
     char const * gdl_input = "MyPlusRule = alpha+;";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -798,7 +805,7 @@ TEST(GdlParserTest, ParseSimplePlusRule)
 TEST(GdlParserTest, ParseSimpleStarRule)
 {
     char const * gdl_input = "MyStarRule = alpha*;";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -900,7 +907,7 @@ TEST(GdlParserTest, ParseSimpleStarRule)
 TEST(GdlParserTest, ParseOneofCallRule)
 {
     char const * gdl_input = "MyOneofRule = oneof(\"abc\");";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -1004,7 +1011,7 @@ TEST(GdlParserTest, ParseOneofCallRule)
 TEST(GdlParserTest, ParseNoneofCallRule)
 {
     char const * gdl_input = "MyNoneofRule = noneof(\"xyz\");";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -1109,7 +1116,7 @@ TEST(GdlParserTest, ParseNoneofCallRule)
 TEST(GdlParserTest, ParseCountCallRule)
 {
     char const * gdl_input = "MyCountRule = count(5, alpha);";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -1253,7 +1260,7 @@ TEST(GdlParserTest, ParseCountCallRule)
 TEST(GdlParserTest, ParseBetweenCallRule)
 {
     char const * gdl_input = "MyBetweenRule = between('[', alpha, ']');";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -1411,7 +1418,7 @@ TEST(GdlParserTest, ParseBetweenCallRule)
 TEST(GdlParserTest, ParseDelimitedCallRule)
 {
     char const * gdl_input = "MyDelimitedRule = delimited('(', alpha);";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -1551,7 +1558,7 @@ TEST(GdlParserTest, ParseDelimitedCallRule)
 TEST(GdlParserTest, ParseLookaheadCallRule)
 {
     char const * gdl_input = "MyLookaheadRule = lookahead(alpha);";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -1680,7 +1687,7 @@ TEST(GdlParserTest, ParseLookaheadCallRule)
 TEST(GdlParserTest, ParseNotCallRule)
 {
     char const * gdl_input = "MyNotRule = not(alpha);";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -1803,7 +1810,7 @@ TEST(GdlParserTest, ParseNotCallRule)
 TEST(GdlParserTest, ParseLexemeCallRule)
 {
     char const * gdl_input = "MyLexemeRule = lexeme(alpha);";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -1930,7 +1937,7 @@ TEST(GdlParserTest, ParseLexemeCallRule)
 TEST(GdlParserTest, ParseSkipCallRule)
 {
     char const * gdl_input = "MySkipRule = skip(alpha);";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -2053,7 +2060,7 @@ TEST(GdlParserTest, ParseSkipCallRule)
 TEST(GdlParserTest, ParseChainl1CallRule)
 {
     char const * gdl_input = "MyChainl1Rule = chainl1(alpha, '+');";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -2191,7 +2198,7 @@ TEST(GdlParserTest, ParseChainl1CallRule)
 TEST(GdlParserTest, ParseChainr1CallRule)
 {
     char const * gdl_input = "MyChainr1Rule = chainr1(alpha, '-');";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -2329,7 +2336,7 @@ TEST(GdlParserTest, ParseChainr1CallRule)
 TEST(GdlParserTest, ParseSemanticActionRule)
 {
     char const * gdl_input = "MyRule = alpha @my_action;";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -2400,7 +2407,7 @@ TEST(GdlParserTest, ParseSemanticActionRule)
 TEST(GdlParserTest, ParseNumberLiteralRule)
 {
     char const * gdl_input = "MyNumberRule = 123;";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -2473,7 +2480,7 @@ TEST(GdlParserTest, ParseNumberLiteralRule)
 TEST(GdlParserTest, ParseParenthesizedExpressionRule)
 {
     char const * gdl_input = "MyParenthesizedRule = (alpha | digit);";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
@@ -2581,7 +2588,7 @@ TEST(GdlParserTest, ParseParenthesizedExpressionRule)
 TEST(GdlParserTest, ParseDoubleKeywordRule)
 {
     char const * gdl_input = "MyDoubleRule = double;";
-    session = epc_parse_str(gdl_parser_root, gdl_input);
+    session = parse(gdl_parser_root, gdl_input);
 
     if (session.result.is_error)
     {
