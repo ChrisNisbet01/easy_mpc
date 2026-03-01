@@ -1,9 +1,11 @@
 #include "easy_pc_private.h"
 #include "parsers.h"
 
+#ifdef WITH_INPUT_STREAM_SUPPORT
 #include <ctype.h>
-#include <errno.h>
 #include <pthread.h>
+#endif
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,13 +31,16 @@ struct epc_parser_ctx_t
     mmap_input_buffer_t mmap_buffer; /* Internal buffer management for input string, using mmap for large inputs. */
     epc_parser_error_t * furthest_error;
 
+#ifdef WITH_INPUT_STREAM_SUPPORT
     pthread_mutex_t mutex;
     pthread_cond_t cond;
     bool is_streaming;
     bool is_eof;
     int input_error;
+#endif
 };
 
+#ifdef WITH_INPUT_STREAM_SUPPORT
 typedef struct
 {
     epc_parser_t * top_parser;
@@ -52,6 +57,7 @@ epc_parsing_thread_worker(void * arg)
 
     return NULL;
 }
+#endif
 
 // --- CPT Visitor ---
 static void
@@ -146,8 +152,10 @@ internal_create_parse_ctx_from_string(char const * input_start)
         return NULL;
     }
 
+#ifdef WITH_INPUT_STREAM_SUPPORT
     pthread_mutex_init(&ctx->mutex, NULL);
     pthread_cond_init(&ctx->cond, NULL);
+#endif
 
     if (input_start != NULL)
     {
@@ -206,8 +214,10 @@ internal_create_parse_ctx_from_fp(FILE * fp)
         return NULL;
     }
 
+#ifdef WITH_INPUT_STREAM_SUPPORT
     pthread_mutex_init(&ctx->mutex, NULL);
     pthread_cond_init(&ctx->cond, NULL);
+#endif
 
     ctx->mmap_buffer = buffer;
     ctx->input_start = buffer.buffer;
@@ -216,6 +226,7 @@ internal_create_parse_ctx_from_fp(FILE * fp)
     return ctx;
 }
 
+#ifdef WITH_INPUT_STREAM_SUPPORT
 static epc_parser_ctx_t *
 internal_create_parse_ctx_streaming(void)
 {
@@ -242,6 +253,7 @@ internal_create_parse_ctx_streaming(void)
 
     return ctx;
 }
+#endif
 
 // Internal parser_ctx_t destruction (for parse results)
 static void
@@ -254,8 +266,10 @@ internal_destroy_parse_ctx(epc_parser_ctx_t * ctx)
 
     epc_parser_error_free(ctx->furthest_error);
 
+#ifdef WITH_INPUT_STREAM_SUPPORT
     pthread_mutex_destroy(&ctx->mutex);
     pthread_cond_destroy(&ctx->cond);
+#endif
 
     if (ctx->mmap_buffer.buffer != NULL)
     {
@@ -276,6 +290,7 @@ parse_ctx_get_input_at_offset(epc_parser_ctx_t * const ctx, size_t const input_o
         };
     }
 
+#ifdef WITH_INPUT_STREAM_SUPPORT
     if (ctx->is_streaming)
     {
         pthread_mutex_lock(&ctx->mutex);
@@ -304,6 +319,7 @@ parse_ctx_get_input_at_offset(epc_parser_ctx_t * const ctx, size_t const input_o
         pthread_mutex_unlock(&ctx->mutex);
         return result;
     }
+#endif
 
     if (input_offset + count > ctx->input_len)
     {
@@ -324,7 +340,12 @@ EASY_PC_HIDDEN
 bool
 parse_ctx_is_streaming(epc_parser_ctx_t const * ctx)
 {
+#ifdef WITH_INPUT_STREAM_SUPPORT
     return ctx ? ctx->is_streaming : false;
+#else
+    (void)ctx;
+    return false;
+#endif
 }
 
 EASY_PC_HIDDEN
@@ -335,6 +356,7 @@ parse_ctx_is_eof(epc_parser_ctx_t * ctx)
     {
         return true;
     }
+#ifdef WITH_INPUT_STREAM_SUPPORT
     if (ctx->is_streaming)
     {
         pthread_mutex_lock(&ctx->mutex);
@@ -342,6 +364,7 @@ parse_ctx_is_eof(epc_parser_ctx_t * ctx)
         pthread_mutex_unlock(&ctx->mutex);
         return is_eof;
     }
+#endif
     return true; // For non-streaming, data is always loaded up to "EOF"
 }
 
@@ -386,6 +409,63 @@ parser_ctx_set_furthest_error(epc_parser_ctx_t * ctx, epc_parser_error_t ** repl
     ctx->furthest_error = *replacement;
     *replacement = NULL;
 }
+
+#ifdef WITH_INPUT_STREAM_SUPPORT
+static epc_parse_result_t
+parse_in_thread(epc_parser_t * top_parser, epc_parser_ctx_t * ctx, epc_parse_input_t input)
+{
+        ParsingThreadArgs args = {
+            .top_parser = top_parser,
+            .ctx = ctx,
+            .result = {0},
+        };
+
+        pthread_t thread;
+        if (pthread_create(&thread, NULL, epc_parsing_thread_worker, &args) != 0)
+        {
+            return epc_unparsed_error_result(0, "Failed to create parsing thread", "parsing thread created", "pthread_create failed");
+        }
+
+        // Producer Loop (Main Thread)
+        char read_buf[4096];
+        ssize_t bytes_read;
+        while ((bytes_read = read(input.fd, read_buf, sizeof(read_buf))) > 0)
+        {
+            pthread_mutex_lock(&ctx->mutex);
+            
+            // Check if we have space in mmap buffer (100MB limit currently)
+            if (ctx->input_len + (size_t)bytes_read > MAX_MMAP_INPUT_SIZE)
+            {
+                ctx->input_error = EFBIG;
+                pthread_cond_broadcast(&ctx->cond);
+                pthread_mutex_unlock(&ctx->mutex);
+                break;
+            }
+
+            memcpy((void *)(ctx->input_start + ctx->input_len), read_buf, (size_t)bytes_read);
+            ctx->input_len += (size_t)bytes_read;
+            
+            pthread_cond_broadcast(&ctx->cond);
+            pthread_mutex_unlock(&ctx->mutex);
+        }
+
+        pthread_mutex_lock(&ctx->mutex);
+        if (bytes_read == 0)
+        {
+            ctx->is_eof = true;
+        }
+        else if (bytes_read < 0)
+        {
+            ctx->input_error = errno;
+        }
+        pthread_cond_broadcast(&ctx->cond);
+        pthread_mutex_unlock(&ctx->mutex);
+
+        pthread_join(thread, NULL);
+
+        return args.result;
+}
+#endif
 
 EASY_PC_HIDDEN epc_parse_session_t
 epc_parse_input(epc_parser_t * top_parser, epc_parse_input_t input)
@@ -441,9 +521,11 @@ epc_parse_input(epc_parser_t * top_parser, epc_parse_input_t input)
 
         break;
 
+#ifdef WITH_INPUT_STREAM_SUPPORT
     case EPC_PARSE_TYPE_FD:
         ctx = internal_create_parse_ctx_streaming();
         break;
+#endif
 
     default:
         session.result = epc_unparsed_error_result(0, "Invalid input type", "valid input type", "invalid input type");
@@ -458,62 +540,15 @@ epc_parse_input(epc_parser_t * top_parser, epc_parse_input_t input)
     }
     session.internal_parse_ctx = ctx;
 
-    if (!ctx->is_streaming)
+#ifdef WITH_INPUT_STREAM_SUPPORT
+    if (ctx->is_streaming)
     {
-        session.result = top_parser->parse_fn(top_parser, ctx, 0);
+        session.result = parse_in_thread(top_parser, ctx, input);
     }
     else
+#endif
     {
-        ParsingThreadArgs args = {
-            .top_parser = top_parser,
-            .ctx = ctx,
-            .result = {0},
-        };
-
-        pthread_t thread;
-        if (pthread_create(&thread, NULL, epc_parsing_thread_worker, &args) != 0)
-        {
-            session.result = epc_unparsed_error_result(0, "Failed to create parsing thread", "parsing thread created", "pthread_create failed");
-            return session;
-        }
-
-        // Producer Loop (Main Thread)
-        char read_buf[4096];
-        ssize_t bytes_read;
-        while ((bytes_read = read(input.fd, read_buf, sizeof(read_buf))) > 0)
-        {
-            pthread_mutex_lock(&ctx->mutex);
-            
-            // Check if we have space in mmap buffer (100MB limit currently)
-            if (ctx->input_len + (size_t)bytes_read > MAX_MMAP_INPUT_SIZE)
-            {
-                ctx->input_error = EFBIG;
-                pthread_cond_broadcast(&ctx->cond);
-                pthread_mutex_unlock(&ctx->mutex);
-                break;
-            }
-
-            memcpy((void *)(ctx->input_start + ctx->input_len), read_buf, (size_t)bytes_read);
-            ctx->input_len += (size_t)bytes_read;
-            
-            pthread_cond_broadcast(&ctx->cond);
-            pthread_mutex_unlock(&ctx->mutex);
-        }
-
-        pthread_mutex_lock(&ctx->mutex);
-        if (bytes_read == 0)
-        {
-            ctx->is_eof = true;
-        }
-        else if (bytes_read < 0)
-        {
-            ctx->input_error = errno;
-        }
-        pthread_cond_broadcast(&ctx->cond);
-        pthread_mutex_unlock(&ctx->mutex);
-
-        pthread_join(thread, NULL);
-        session.result = args.result;
+        session.result = top_parser->parse_fn(top_parser, ctx, 0);
     }
 
     // After parsing, if an error occurred, check if the tracked "furthest_error"
@@ -565,6 +600,7 @@ EASY_PC_API epc_parse_session_t epc_parse_file(epc_parser_t * top_parser, char c
     return epc_parse_input(top_parser, input);
 }
 
+#ifdef WITH_INPUT_STREAM_SUPPORT
 EASY_PC_API epc_parse_session_t
 epc_parse_fd(epc_parser_t * top_parser, int fd)
 {
@@ -572,6 +608,7 @@ epc_parse_fd(epc_parser_t * top_parser, int fd)
 
     return epc_parse_input(top_parser, input);
 }
+#endif
 
 EASY_PC_API void
 epc_parse_session_destroy(epc_parse_session_t * session)

@@ -62,7 +62,9 @@ typedef enum epc_parse_type_t
     EPC_PARSE_TYPE_STRING,
     EPC_PARSE_TYPE_FILE,
     EPC_PARSE_TYPE_FILENAME,
+#ifdef WITH_INPUT_STREAM_SUPPORT
     EPC_PARSE_TYPE_FD,
+#endif
 } epc_parse_type_t;
 
 /**
@@ -81,7 +83,9 @@ typedef struct epc_parse_input_t
         char const * input_string;
         FILE * fp;
         char const * filename;
+#ifdef WITH_INPUT_STREAM_SUPPORT
         int fd;
+#endif
     };
 } epc_parse_input_t;
 
@@ -1120,8 +1124,7 @@ EASY_PC_API void epc_parser_set_ast_action(epc_parser_t * p, int action_type);
 
 // --- Updated Top-Level API ---
 /**
- * @brief Initiates a parsing operation with a given grammar and input string.
- *        This is a convenience wrapper for `epc_parse_input()` that accepts a null-terminated C string.
+ * @brief Initiates a parsing operation with a given grammar and NUL-terminated input string.
  *
  * @param top_parser The starting parser for the grammar (e.g., the root rule).
  * @param input_string The null-terminated string to be parsed.
@@ -1136,7 +1139,7 @@ epc_parse_str(epc_parser_t * top_parser, char const * input_string);
 /**
  * @brief Initiates a parsing operation with a given grammar and input file stream.
  *
- * This function is similar to `epc_parse_input()`, but it reads from a `FILE*`
+ * This function is similar to `epc_parse_str()`, but it reads from a `FILE*`
  * stream instead of a string. It attempts to match the `top_parser` against
  * the content of the file.
  *
@@ -1152,7 +1155,7 @@ EASY_PC_API epc_parse_session_t epc_parse_fp(epc_parser_t * top_parser, FILE * f
 /**
  * @brief Initiates a parsing operation with a given grammar and input file specified by filename.
  *
- * This function is similar to `epc_parse_input()`, but it reads from a file specified by its name.
+ * This function is similar to `epc_parse_str()`, but it reads from a file specified by its name.
  * It attempts to match the `top_parser` against the content of the file.
  *
  * @param top_parser The starting parser for the grammar (e.g., the root rule).
@@ -1164,6 +1167,7 @@ EASY_PC_API epc_parse_session_t epc_parse_fp(epc_parser_t * top_parser, FILE * f
  */
 EASY_PC_API epc_parse_session_t epc_parse_file(epc_parser_t * top_parser, char const * filename);
 
+#ifdef WITH_INPUT_STREAM_SUPPORT
 /**
  * @brief Initiates a parsing operation with a given grammar and input from a file descriptor.
  *
@@ -1175,6 +1179,7 @@ EASY_PC_API epc_parse_session_t epc_parse_file(epc_parser_t * top_parser, char c
  * @return An `easy_pc_parse_session_t` structure.
  */
 EASY_PC_API epc_parse_session_t epc_parse_fd(epc_parser_t * top_parser, int fd);
+#endif
 
 /**
  * @brief Destroys an `easy_pc_parse_session_t` and frees all associated resources.

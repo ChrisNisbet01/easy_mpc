@@ -288,25 +288,29 @@ add_test(
     COMMAND AstBuilderTest
 )
 
-add_executable(StreamingTest
-    AllTests.cpp
-    StreamingTest.cpp
-)
+if(WITH_INPUT_STREAM_SUPPORT)
+    add_executable(StreamingTest
+        AllTests.cpp
+        StreamingTest.cpp
+    )
 
-add_dependencies(all_unit_tests StreamingTest)
+    add_dependencies(all_unit_tests StreamingTest)
 
-target_include_directories(StreamingTest PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../lib
-)
+    target_include_directories(StreamingTest PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../lib
+    )
 
-target_link_libraries(StreamingTest PRIVATE
-    easy_pc_shared
-    CppUTest
-    CppUTestExt
-)
+    target_link_libraries(StreamingTest PRIVATE
+        easy_pc_shared
+        CppUTest
+        CppUTestExt
+    )
 
-add_test(
-    NAME StreamingTest
-    COMMAND StreamingTest
-)
+    target_compile_definitions(StreamingTest PRIVATE WITH_INPUT_STREAM_SUPPORT)
+
+    add_test(
+        NAME StreamingTest
+        COMMAND StreamingTest
+    )
+endif()

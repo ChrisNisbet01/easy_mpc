@@ -30,8 +30,14 @@ target_include_directories(easy_pc_static PUBLIC
 target_compile_options(easy_pc_shared PRIVATE -Wall -Wextra -pedantic)
 target_compile_options(easy_pc_static PRIVATE -Wall -Wextra -pedantic)
 
-target_link_libraries(easy_pc_shared PRIVATE Threads::Threads)
-target_link_libraries(easy_pc_static PRIVATE Threads::Threads)
+if(WITH_INPUT_STREAM_SUPPORT)
+    target_link_libraries(easy_pc_shared PRIVATE Threads::Threads)
+    target_link_libraries(easy_pc_static PRIVATE Threads::Threads)
+    target_compile_definitions(easy_pc_shared PRIVATE WITH_INPUT_STREAM_SUPPORT)
+    target_compile_definitions(easy_pc_static PRIVATE WITH_INPUT_STREAM_SUPPORT)
+    target_compile_definitions(easy_pc_shared PUBLIC WITH_INPUT_STREAM_SUPPORT)
+    target_compile_definitions(easy_pc_static PUBLIC WITH_INPUT_STREAM_SUPPORT)
+endif()
 
 # LTO settings
 include(CheckIPOSupported)
