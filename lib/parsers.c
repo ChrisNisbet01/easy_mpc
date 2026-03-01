@@ -591,7 +591,6 @@ epc_digit(char const * name)
     return p;
 }
 
-#ifdef WITH_INPUT_STREAM_SUPPORT
 static bool
 is_double_prefix(char const * s, size_t len)
 {
@@ -608,7 +607,6 @@ is_double_prefix(char const * s, size_t len)
     }
     return true;
 }
-#endif
 
 static epc_parse_result_t
 pint_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset)
@@ -616,8 +614,6 @@ pint_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_o
     size_t parsed_len = 0;
     char const * input = NULL;
 
-#ifdef WITH_INPUT_STREAM_SUPPORT
-    if (parse_ctx_is_streaming(ctx))
     {
         size_t current_len = 0;
         while (1)
@@ -637,19 +633,15 @@ pint_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_o
 
             if (parsed_len < current_len)
             {
-                // If it parsed 0 but the first char is a sign, we might want to wait for digits.
-                if (parsed_len == 0 && (input[0] == '+' || input[0] == '-'))
-                {
-                    // Continue loop to wait for more data
-                }
-                else
+                // If it parsed 0 but the first char is a sign, we wait for more digits.
+                if (parsed_len > 0 || input[0] != '-')
                 {
                     break;
                 }
+                // Continue loop to wait for more data or EOF
             }
         }
     }
-#endif
 
     parse_get_input_result_t input_result
         = parse_ctx_get_input_at_offset(ctx, input_offset, parsed_len > 0 ? parsed_len : 1);
@@ -857,8 +849,6 @@ pdouble_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inpu
     size_t parsed_len = 0;
     char const * input = NULL;
 
-#ifdef WITH_INPUT_STREAM_SUPPORT
-    if (parse_ctx_is_streaming(ctx))
     {
         size_t current_len = 0;
         while (1)
@@ -880,18 +870,14 @@ pdouble_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inpu
             if (parsed_len < current_len)
             {
                 // Check if the suffix is a potential numeric prefix
-                if (is_double_prefix(input + parsed_len, current_len - parsed_len))
-                {
-                    // Continue loop and wait for more
-                }
-                else
+                if (!is_double_prefix(input + parsed_len, current_len - parsed_len))
                 {
                     break;
                 }
+                // Continue loop and wait for more or EOF
             }
         }
     }
-#endif
 
     parse_get_input_result_t input_result
         = parse_ctx_get_input_at_offset(ctx, input_offset, parsed_len > 0 ? parsed_len : 1);
@@ -1225,7 +1211,6 @@ pand_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_o
 static epc_parse_result_t
 pcpp_comment_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset)
 {
-#ifdef WITH_INPUT_STREAM_SUPPORT
     parse_get_input_result_t input_result = parse_ctx_get_input_at_offset(ctx, input_offset, 2);
 
     if (input_result.is_eof && input_result.available < 2)
@@ -1279,50 +1264,6 @@ pcpp_comment_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t
     node->len = current_len;
 
     return epc_parser_success_result(node);
-#else
-    parse_get_input_result_t input_result = parse_ctx_get_input_at_offset(ctx, input_offset, 1);
-
-    if (input_result.is_eof)
-    {
-        return epc_parser_error_result(ctx, input_offset, "Unexpected end of input", "//", "EOF");
-    }
-
-    char const * current_input_ptr = input_result.next_input;
-    size_t current_offset = input_offset;
-
-    // 1. Match "//"
-    if (input_result.available < 2 || strncmp(current_input_ptr, "//", 2) != 0)
-    {
-        return epc_parser_error_result(ctx, input_offset, "Expected '//'", "//", "EOF");
-    }
-    current_offset += 2;
-    current_input_ptr += 2;
-
-    // 2. Match content until newline or EOF
-    while (current_offset - input_offset < input_result.available && *current_input_ptr != '\n')
-    {
-        current_offset++;
-        current_input_ptr++;
-    }
-
-    // 3. Optionally consume newline
-    if (current_offset - input_offset < input_result.available && *current_input_ptr == '\n')
-    {
-        current_offset++;
-    }
-
-    // Success - create a CPT node for the whole comment
-    epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
-    if (node == NULL)
-    {
-        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A");
-    }
-
-    node->content = input_result.next_input;
-    node->len = current_offset - input_offset;
-
-    return epc_parser_success_result(node);
-#endif
 }
 
 epc_parser_t *
@@ -1343,7 +1284,6 @@ epc_cpp_comment(char const * name)
 static epc_parse_result_t
 pc_comment_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset)
 {
-#ifdef WITH_INPUT_STREAM_SUPPORT
     parse_get_input_result_t input_result = parse_ctx_get_input_at_offset(ctx, input_offset, 2);
 
     if (input_result.is_eof && input_result.available < 2)
@@ -1397,51 +1337,6 @@ pc_comment_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t i
     node->len = current_len;
 
     return epc_parser_success_result(node);
-#else
-    parse_get_input_result_t input_result = parse_ctx_get_input_at_offset(ctx, input_offset, 1);
-
-    if (input_result.is_eof)
-    {
-        return epc_parser_error_result(ctx, input_offset, "Unexpected end of input", "/*", "EOF");
-    }
-
-    char const * current_input_ptr = input_result.next_input;
-    size_t current_offset = input_offset;
-
-    // 1. Match "/*"
-    if (input_result.available < 2 || strncmp(current_input_ptr, "/*", 2) != 0)
-    {
-        return epc_parser_error_result(ctx, input_offset, "Expected '/*'", "/*", "EOF");
-    }
-    current_offset += 2;
-    current_input_ptr += 2;
-
-    // 2. Match content until "*/"
-    while (current_offset + 2 - input_offset <= input_result.available && strncmp(current_input_ptr, "*/", 2) != 0)
-    {
-        current_offset++;
-        current_input_ptr++;
-    }
-
-    // 3. Match "*/"
-    if (current_offset + 2 - input_offset > input_result.available || strncmp(current_input_ptr, "*/", 2) != 0)
-    {
-        return epc_parser_error_result(ctx, input_offset, "Unterminated C-style comment", "*/", "EOF");
-    }
-    current_offset += 2; // Consume "*/"
-
-    // Success - create a CPT node for the whole comment
-    epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
-    if (node == NULL)
-    {
-        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A");
-    }
-
-    node->content = input_result.next_input;
-    node->len = current_offset - input_offset;
-
-    return epc_parser_success_result(node);
-#endif
 }
 
 EASY_PC_API epc_parser_t *
@@ -1462,7 +1357,6 @@ epc_c_comment(char const * name)
 static epc_parse_result_t
 pbash_comment_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset)
 {
-#ifdef WITH_INPUT_STREAM_SUPPORT
     parse_get_input_result_t input_result = parse_ctx_get_input_at_offset(ctx, input_offset, 1);
 
     if (input_result.is_eof)
@@ -1508,50 +1402,6 @@ pbash_comment_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_
     node->len = current_len;
 
     return epc_parser_success_result(node);
-#else
-    parse_get_input_result_t input_result = parse_ctx_get_input_at_offset(ctx, input_offset, 1);
-
-    if (input_result.is_eof)
-    {
-        return epc_parser_error_result(ctx, input_offset, "Unexpected end of input", "//", "EOF");
-    }
-
-    char const * current_input_ptr = input_result.next_input;
-    size_t current_offset = input_offset;
-
-    // 1. Match "#"
-    if (current_input_ptr[0] != '#')
-    {
-        return epc_parser_error_result(ctx, input_offset, "Expected '#'", "#", "EOF");
-    }
-    current_offset++;
-    current_input_ptr++;
-
-    // 2. Match content until newline or EOF
-    while (current_offset - input_offset < input_result.available && *current_input_ptr != '\n')
-    {
-        current_offset++;
-        current_input_ptr++;
-    }
-
-    // 3. Optionally consume newline
-    if (current_offset - input_offset < input_result.available && *current_input_ptr == '\n')
-    {
-        current_offset++;
-    }
-
-    // Success - create a CPT node for the whole comment
-    epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
-    if (node == NULL)
-    {
-        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A");
-    }
-
-    node->content = input_result.next_input;
-    node->len = current_offset - input_offset;
-
-    return epc_parser_success_result(node);
-#endif
 }
 
 epc_parser_t *
@@ -2828,7 +2678,6 @@ epc_one_of(char const * name, char const * chars_to_match)
     return p;
 }
 
-#ifdef WITH_INPUT_STREAM_SUPPORT
 typedef struct
 {
     size_t len;
@@ -2899,47 +2748,6 @@ consume_whitespace(epc_parser_ctx_t * ctx, size_t offset, bool consume_comments)
 
     return (consume_ws_result_t){.len = len, .interrupted = false};
 }
-#else
-static size_t
-consume_whitespace(char const * input, bool consume_comments)
-{
-    if (input == NULL)
-    {
-        return 0;
-    }
-    size_t len = 0;
-    bool consumed_something;
-
-    do
-    {
-        consumed_something = false;
-
-        // Consume standard whitespace
-        while (input[len] != '\0' && isspace(input[len]))
-        {
-            len++;
-            consumed_something = true;
-        }
-
-        // Consume C++ style single-line comments "//"
-        if (consume_comments && input[len] == '/' && input[len + 1] == '/')
-        {
-            len += 2; // Skip "//"
-            while (input[len] != '\0' && input[len] != '\n')
-            {
-                len++; // Skip characters until newline or EOF
-            }
-            if (input[len] == '\n')
-            {
-                len++; // Skip the newline character itself
-            }
-            consumed_something = true;
-        }
-    } while (consumed_something); // Loop if any whitespace or comment was consumed in this pass
-
-    return len;
-}
-#endif
 
 static epc_parse_result_t
 plexeme_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset)
@@ -2965,7 +2773,6 @@ plexeme_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inpu
     epc_parser_error_t * original_furthest_error = parser_furthest_error_copy(ctx);
     size_t current_input_offset = input_offset;
 
-#ifdef WITH_INPUT_STREAM_SUPPORT
     // 1. Consume leading whitespace
     size_t leading_ws_len = 0;
     while (1)
@@ -3000,27 +2807,6 @@ plexeme_parse_fn(struct epc_parser_t * self, epc_parser_ctx_t * ctx, size_t inpu
         }
     }
     current_input_offset += trailing_ws_len;
-#else
-    char const * current_input = input_result.next_input;
-
-    // 1. Consume leading whitespace
-    size_t leading_ws_len = consume_whitespace(current_input, consume_comments);
-    current_input_offset += leading_ws_len;
-
-    // 2. Parse the actual item
-    epc_parse_result_t item_result = parse(child_parser, ctx, current_input_offset);
-    if (item_result.is_error)
-    {
-        epc_parser_error_free(original_furthest_error);
-        return item_result; // Propagate item's error
-    }
-    current_input_offset += item_result.data.success->len;
-
-    // 3. Consume trailing whitespace
-    current_input = input_result.next_input + current_input_offset - input_offset;
-    size_t trailing_ws_len = consume_whitespace(current_input, consume_comments);
-    current_input_offset += trailing_ws_len;
-#endif
 
     // Success - create a node for 'lexeme'
     epc_cpt_node_t * parent_node = epc_node_alloc(self, self->tag);
