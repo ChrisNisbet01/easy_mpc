@@ -1,0 +1,1 @@
+SatisfyRule = satisfy(any, "satisfied", satisfy_cb, satisfy_data);

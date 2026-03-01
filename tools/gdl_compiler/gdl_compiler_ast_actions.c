@@ -1,8 +1,8 @@
+#include "easy_pc_private.h" // For epc_ast_builder_set_error
+#include "gdl_ast.h"
 #include "gdl_compiler_ast_actions.h"
 
-#include "gdl_ast.h"
 #include "easy_pc/easy_pc_ast.h"
-#include "easy_pc_private.h" // For epc_ast_builder_set_error
 
 #include <assert.h>
 #include <stdarg.h>
@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-//#define AST_DEBUG 1
+// #define AST_DEBUG 1
 
 #ifdef AST_DEBUG
 static int debug_indent = 0;
@@ -51,7 +51,7 @@ gdl_ast_node_alloc(epc_ast_builder_ctx_t * ctx, gdl_ast_node_type_t node_type)
 static gdl_ast_list_t
 gdl_ast_list_init(void)
 {
-    gdl_ast_list_t list = { NULL, NULL, 0 };
+    gdl_ast_list_t list = {NULL, NULL, 0};
     return list;
 }
 
@@ -99,14 +99,13 @@ gdl_ast_list_free_recursive(gdl_ast_list_t * list, void * user_data)
     {
         gdl_ast_list_node_t * next = current->next;
         gdl_ast_node_free(current->item, user_data); // Free the AST node itself
-        free(current);                     // Free the list node wrapper
+        free(current);                               // Free the list node wrapper
         current = next;
     }
     list->head = NULL;
     list->tail = NULL;
     list->count = 0;
 }
-
 
 // --- GDL AST Node Free (adapted to epc_ast_node_free_cb signature) ---
 void
@@ -189,7 +188,6 @@ gdl_ast_node_free(void * node_ptr, void * user_data)
         gdl_ast_node_free(node->data.optional.expr, user_data);
         break;
 
-
     case GDL_AST_NODE_TYPE_COMBINATOR_CHAINL1:
     case GDL_AST_NODE_TYPE_COMBINATOR_CHAINR1:
         gdl_ast_node_free(node->data.chain_combinator_call.item_expr, user_data);
@@ -208,16 +206,29 @@ gdl_ast_node_free(void * node_ptr, void * user_data)
         gdl_ast_list_free_recursive(&node->data.argument_list, user_data);
         break;
 
-    case GDL_AST_NODE_TYPE_CHAR_LITERAL:   // The 'char' is actually a string, because it may contain escape chars.
+    case GDL_AST_NODE_TYPE_CHAR_LITERAL: // The 'char' is actually a string, because it may contain escape chars.
         free(node->data.char_literal.value);
         break;
 
-        /* The following nod types have no dynamic data to free. */
-    case GDL_AST_NODE_TYPE_NUMBER_LITERAL: // No dynamic data to free
-    case GDL_AST_NODE_TYPE_CHAR_RANGE:     // No dynamic data to free
+    case GDL_AST_NODE_TYPE_SATISFY_CALL:
+        gdl_ast_node_free(node->data.satisfy_call.expr, user_data);
+        free((char *)node->data.satisfy_call.message);
+        free((char *)node->data.satisfy_call.predicate_name);
+        free((char *)node->data.satisfy_call.parser_data_name);
+        break;
+
+    case GDL_AST_NODE_TYPE_WRAP_CALL:
+        gdl_ast_node_free(node->data.wrap_call.expr, user_data);
+        free((char *)node->data.wrap_call.callbacks_name);
+        free((char *)node->data.wrap_call.parser_data_name);
+        break;
+
+        /* The following node types have no dynamic data to free. */
+    case GDL_AST_NODE_TYPE_NUMBER_LITERAL:      // No dynamic data to free
+    case GDL_AST_NODE_TYPE_CHAR_RANGE:          // No dynamic data to free
     case GDL_AST_NODE_TYPE_REPETITION_OPERATOR: // No dynamic data to free
-    case GDL_AST_NODE_TYPE_RAW_CHAR_LITERAL: // No dynamic data to free
-    case GDL_AST_NODE_TYPE_PLACEHOLDER: // Placeholder has no data
+    case GDL_AST_NODE_TYPE_RAW_CHAR_LITERAL:    // No dynamic data to free
+    case GDL_AST_NODE_TYPE_PLACEHOLDER:         // Placeholder has no data
         break;
     }
 
@@ -235,26 +246,34 @@ handle_node_entry(epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void * use
     if (node->ast_config.assigned)
     {
         debug_indent += 4;
-        fprintf(stderr, "%*sAST_DEBUG: ENTER CPT node '%s' (action %d)\n",
-                debug_indent - 4, "", node->name, node->ast_config.action);
+        fprintf(
+            stderr,
+            "%*sAST_DEBUG: ENTER CPT node '%s' (action %d)\n",
+            debug_indent - 4,
+            "",
+            node->name,
+            node->ast_config.action
+        );
     }
 }
 #endif
 
-
 static void
 handle_create_identifier_ref(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num children %d\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num children %d\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -281,18 +300,19 @@ handle_create_identifier_ref(
 }
 
 static void
-handle_create_keyword(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
-)
+handle_create_keyword(epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data)
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -320,17 +340,20 @@ handle_create_keyword(
 
 static void
 handle_create_terminal(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -342,7 +365,8 @@ handle_create_terminal(
     if (count != 1)
     {
         epc_ast_builder_set_error(ctx, "Terminal action expects exactly 1 child, got %d", count);
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -359,17 +383,20 @@ handle_create_terminal(
 
 static void
 handle_create_semantic_action(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -382,7 +409,8 @@ handle_create_semantic_action(
     if (count != 1)
     {
         epc_ast_builder_set_error(ctx, "Semantic action expects 1 child (identifier), got %d", count);
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -404,23 +432,26 @@ handle_create_semantic_action(
     }
     ast_node->data.semantic_action.action_name = identifier_node->data.identifier_ref.name;
     identifier_node->data.identifier_ref.name = NULL; // Transfer ownership
-    gdl_ast_node_free(identifier_node, user_data); // Free the wrapper node
+    gdl_ast_node_free(identifier_node, user_data);    // Free the wrapper node
     epc_ast_push(ctx, ast_node);
 }
 
 static void
 handle_create_optional_semantic_action(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -444,7 +475,8 @@ handle_create_optional_semantic_action(
     else if (count > 1)
     {
         epc_ast_builder_set_error(ctx, "Optional semantic action expects 0 or 1 child, got %d", count);
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -465,17 +497,20 @@ handle_create_optional_semantic_action(
 
 static void
 handle_create_repetition_operator(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -503,17 +538,20 @@ handle_create_repetition_operator(
 
 static void
 handle_create_number_literal(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -541,17 +579,20 @@ handle_create_number_literal(
 
 static void
 handle_create_char_literal(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -594,17 +635,20 @@ handle_create_char_literal(
 
 static void
 handle_create_string_literal(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -646,17 +690,20 @@ handle_create_string_literal(
 
 static void
 handle_create_raw_char_literal(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -683,18 +730,19 @@ handle_create_raw_char_literal(
 }
 
 static void
-handle_create_program(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
-)
+handle_create_program(epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data)
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -707,7 +755,8 @@ handle_create_program(
     {
         epc_ast_builder_set_error(ctx, "Program expects 1 child (sequence of rules), got %d", count);
         // Free children not consumed
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -736,17 +785,20 @@ handle_create_program(
 
 static void
 handle_create_rule_definition(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -757,8 +809,13 @@ handle_create_rule_definition(
     (void)node;
     if (count < 2 || count > 3)
     {
-        epc_ast_builder_set_error(ctx, "Rule definition expects 2 or 3 children (identifier, definition, optional_semantic_action), got %d", count);
-        for (int i = 0; i < count; ++i) {
+        epc_ast_builder_set_error(
+            ctx,
+            "Rule definition expects 2 or 3 children (identifier, definition, optional_semantic_action), got %d",
+            count
+        );
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -786,7 +843,7 @@ handle_create_rule_definition(
     if (rule_def_node)
     {
         rule_def_node->data.rule_def.name = identifier_ref_node->data.identifier_ref.name; // Transfer ownership
-        identifier_ref_node->data.identifier_ref.name = NULL; // Prevent double free
+        identifier_ref_node->data.identifier_ref.name = NULL;                              // Prevent double free
         rule_def_node->data.rule_def.definition = definition_node;
         rule_def_node->data.rule_def.semantic_action = semantic_action_node;
         epc_ast_push(ctx, rule_def_node);
@@ -796,17 +853,20 @@ handle_create_rule_definition(
 
 static void
 handle_create_char_range(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -818,7 +878,8 @@ handle_create_char_range(
     if (count != 2)
     {
         epc_ast_builder_set_error(ctx, "Char range expects 2 children (start_char, end_char), got %d", count);
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -849,17 +910,20 @@ handle_create_char_range(
 
 static void
 handle_create_oneof_call(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -867,11 +931,13 @@ handle_create_oneof_call(
     }
 #endif
 
-    (void)node; (void)user_data;
+    (void)node;
+    (void)user_data;
     if (count != 1)
     {
         epc_ast_builder_set_error(ctx, "Oneof call expects 1 child (argument list), got %d", count);
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -897,17 +963,20 @@ handle_create_oneof_call(
 
 static void
 handle_create_noneof_call(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -915,11 +984,13 @@ handle_create_noneof_call(
     }
 #endif
 
-    (void)node; (void)user_data;
+    (void)node;
+    (void)user_data;
     if (count != 1)
     {
         epc_ast_builder_set_error(ctx, "Noneof call expects 1 child (argument list), got %d", count);
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -945,17 +1016,20 @@ handle_create_noneof_call(
 
 static void
 handle_create_count_call(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -967,7 +1041,8 @@ handle_create_count_call(
     if (count != 2)
     {
         epc_ast_builder_set_error(ctx, "Count call expects 2 children (count_node, expression), got %d", count);
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -995,17 +1070,20 @@ handle_create_count_call(
 
 static void
 handle_create_delimited_call(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -1017,7 +1095,8 @@ handle_create_delimited_call(
     if (count != 2)
     {
         epc_ast_builder_set_error(ctx, "Delimited call expects 2 children (item, delimiter), got %d", count);
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -1037,17 +1116,20 @@ handle_create_delimited_call(
 
 static void
 handle_create_between_call(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -1059,7 +1141,8 @@ handle_create_between_call(
     if (count != 3)
     {
         epc_ast_builder_set_error(ctx, "Between call expects 3 children (open, content, close), got %d", count);
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -1084,7 +1167,7 @@ static void
 handle_unary_combinator_call(
     epc_ast_builder_ctx_t * ctx,
     epc_cpt_node_t * node,
-    void * * children,
+    void ** children,
     int count,
     void * user_data,
     gdl_ast_node_type_t node_type
@@ -1092,8 +1175,15 @@ handle_unary_combinator_call(
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -1105,7 +1195,8 @@ handle_unary_combinator_call(
     if (count != 1)
     {
         epc_ast_builder_set_error(ctx, "Unary combinator call expects 1 child, got %d", count);
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -1120,32 +1211,51 @@ handle_unary_combinator_call(
     }
 }
 
-static void handle_create_lookahead_call(epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data) {
+static void
+handle_create_lookahead_call(
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
+)
+{
     handle_unary_combinator_call(ctx, node, children, count, user_data, GDL_AST_NODE_TYPE_COMBINATOR_LOOKAHEAD);
 }
-static void handle_create_not_call(epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data) {
+static void
+handle_create_not_call(
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
+)
+{
     handle_unary_combinator_call(ctx, node, children, count, user_data, GDL_AST_NODE_TYPE_COMBINATOR_NOT);
 }
-static void handle_create_lexeme_call(epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data) {
+static void
+handle_create_lexeme_call(
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
+)
+{
     handle_unary_combinator_call(ctx, node, children, count, user_data, GDL_AST_NODE_TYPE_COMBINATOR_LEXEME);
 }
-static void handle_create_skip_call(epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data) {
+static void
+handle_create_skip_call(
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
+)
+{
     handle_unary_combinator_call(ctx, node, children, count, user_data, GDL_AST_NODE_TYPE_COMBINATOR_SKIP);
 }
 
 static void
 handle_create_chainl1_call(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -1157,7 +1267,8 @@ handle_create_chainl1_call(
     if (count != 2)
     {
         epc_ast_builder_set_error(ctx, "Chainl1 call expects 2 children (item, op), got %d", count);
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -1177,17 +1288,20 @@ handle_create_chainl1_call(
 
 static void
 handle_create_chainr1_call(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -1199,7 +1313,8 @@ handle_create_chainr1_call(
     if (count != 2)
     {
         epc_ast_builder_set_error(ctx, "Chainr1 call expects 2 children (item, op), got %d", count);
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -1219,17 +1334,20 @@ handle_create_chainr1_call(
 
 static void
 handle_create_expression_factor(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -1241,7 +1359,8 @@ handle_create_expression_factor(
     if (count < 1 || count > 2)
     {
         epc_ast_builder_set_error(ctx, "Expression factor expects 1 or 2 children, got %d", count);
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -1253,7 +1372,8 @@ handle_create_expression_factor(
     if (primary_expression_node->type == GDL_AST_NODE_TYPE_OPTIONAL_EXPRESSION)
     {
         epc_ast_builder_set_error(ctx, "Expression factor expected primary expression, but got optional expression.");
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -1290,17 +1410,20 @@ handle_create_expression_factor(
 
 static void
 handle_create_sequence(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -1308,13 +1431,13 @@ handle_create_sequence(
     }
 #endif
 
-
     (void)node;
     gdl_ast_node_t * combined_node = gdl_ast_node_alloc(ctx, GDL_AST_NODE_TYPE_SEQUENCE);
     if (combined_node == NULL)
     {
         // Error already set by gdl_ast_node_alloc
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -1330,17 +1453,20 @@ handle_create_sequence(
 
 static void
 handle_create_alternative(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -1348,13 +1474,13 @@ handle_create_alternative(
     }
 #endif
 
-
     (void)node;
     gdl_ast_node_t * combined_node = gdl_ast_node_alloc(ctx, GDL_AST_NODE_TYPE_ALTERNATIVE);
     if (combined_node == NULL)
     {
         // Error already set by gdl_ast_node_alloc
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -1370,17 +1496,20 @@ handle_create_alternative(
 
 static void
 handle_create_optional_expression(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -1388,12 +1517,12 @@ handle_create_optional_expression(
     }
 #endif
 
-
     (void)node;
     if (count > 1)
     {
         epc_ast_builder_set_error(ctx, "Optional expression expects 0 or 1 child, got %d", count);
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -1411,17 +1540,20 @@ handle_create_optional_expression(
 
 static void
 handle_create_fail_call(
-    epc_ast_builder_ctx_t * ctx,
-    epc_cpt_node_t * node,
-    void * * children,
-    int count,
-    void * user_data
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
 )
 {
 #ifdef AST_DEBUG
     debug_indent -= 4;
-    fprintf(stderr, "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
-            debug_indent, "", node->name, node->ast_config.action, count);
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
     for (int i = 0; i < count; i++)
     {
         gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
@@ -1429,12 +1561,12 @@ handle_create_fail_call(
     }
 #endif
 
-
     (void)node;
     if (count != 1)
     {
         epc_ast_builder_set_error(ctx, "Fail call expects 1 child (string literal), got %d", count);
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i)
+        {
             gdl_ast_node_free(children[i], user_data);
         }
         return;
@@ -1458,6 +1590,154 @@ handle_create_fail_call(
     gdl_ast_node_free(str_lit_node, user_data); // Free the wrapper node
 }
 
+static void
+handle_create_satisfy_call(
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
+)
+{
+#ifdef AST_DEBUG
+    debug_indent -= 4;
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
+    for (int i = 0; i < count; i++)
+    {
+        gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
+        fprintf(stderr, "%*schild %d type %d\n", debug_indent, "", i, child->type);
+    }
+#endif
+
+    (void)node;
+    if (count != 4)
+    {
+        epc_ast_builder_set_error(
+            ctx, "Satisfy call expects 4 children (arg_expr, message, predicate, parser_data), got %d", count
+        );
+        for (int i = 0; i < count; ++i)
+        {
+            gdl_ast_node_free(children[i], user_data);
+        }
+        return;
+    }
+
+    gdl_ast_node_t * expr_node = (gdl_ast_node_t *)children[0];
+    gdl_ast_node_t * message_node = (gdl_ast_node_t *)children[1];
+    gdl_ast_node_t * predicate_node = (gdl_ast_node_t *)children[2];
+    gdl_ast_node_t * parser_data_node = (gdl_ast_node_t *)children[3];
+    if (message_node->type != GDL_AST_NODE_TYPE_STRING_LITERAL
+        || predicate_node->type != GDL_AST_NODE_TYPE_IDENTIFIER_REF
+        || parser_data_node->type != GDL_AST_NODE_TYPE_IDENTIFIER_REF)
+    {
+        epc_ast_builder_set_error(ctx, "Satisfy call expects a string literal.");
+        for (int i = 0; i < count; ++i)
+        {
+            gdl_ast_node_free(children[i], user_data);
+        }
+        return;
+    }
+
+    gdl_ast_node_t * satisfy_node = gdl_ast_node_alloc(ctx, GDL_AST_NODE_TYPE_SATISFY_CALL);
+    if (node == NULL)
+    {
+        epc_ast_builder_set_error(ctx, "Failed to allocate satisfy call node.");
+        for (int i = 0; i < count; ++i)
+        {
+            gdl_ast_node_free(children[i], user_data);
+        }
+        return;
+    }
+
+    satisfy_node->data.satisfy_call.expr = expr_node;
+    satisfy_node->data.satisfy_call.message = message_node->data.string_literal.value;
+    message_node->data.string_literal.value = NULL; // Transfer ownership
+    gdl_ast_node_free(message_node, user_data);
+    satisfy_node->data.satisfy_call.predicate_name = predicate_node->data.identifier_ref.name;
+    predicate_node->data.identifier_ref.name = NULL; // Transfer ownership
+    gdl_ast_node_free(predicate_node, user_data);
+    satisfy_node->data.satisfy_call.parser_data_name = parser_data_node->data.identifier_ref.name;
+    parser_data_node->data.identifier_ref.name = NULL; // Transfer ownership
+    gdl_ast_node_free(parser_data_node, user_data);
+
+    epc_ast_push(ctx, satisfy_node);
+}
+
+static void
+handle_create_wrap_call(
+    epc_ast_builder_ctx_t * ctx, epc_cpt_node_t * node, void ** children, int count, void * user_data
+)
+{
+#ifdef AST_DEBUG
+    debug_indent -= 4;
+    fprintf(
+        stderr,
+        "%*sAST_DEBUG: EXIT CPT node '%s' (action %d) num_children %u\n",
+        debug_indent,
+        "",
+        node->name,
+        node->ast_config.action,
+        count
+    );
+    for (int i = 0; i < count; i++)
+    {
+        gdl_ast_node_t * child = (gdl_ast_node_t *)children[i];
+        fprintf(stderr, "%*schild %d type %d\n", debug_indent, "", i, child->type);
+    }
+#endif
+
+    (void)node;
+    if (count != 3)
+    {
+        epc_ast_builder_set_error(
+            ctx, "Wrap call expects 3 children (arg_expr, callbacks_name, parser_data_name), got %d", count
+        );
+        for (int i = 0; i < count; ++i)
+        {
+            gdl_ast_node_free(children[i], user_data);
+        }
+        return;
+    }
+
+    gdl_ast_node_t * expr_node = (gdl_ast_node_t *)children[0];
+    gdl_ast_node_t * callbacks_node = (gdl_ast_node_t *)children[1];
+    gdl_ast_node_t * parser_data_node = (gdl_ast_node_t *)children[2];
+    if (callbacks_node->type != GDL_AST_NODE_TYPE_IDENTIFIER_REF
+        || parser_data_node->type != GDL_AST_NODE_TYPE_IDENTIFIER_REF)
+    {
+        epc_ast_builder_set_error(ctx, "Wrap call expects callback and parser data identifiers.");
+        for (int i = 0; i < count; ++i)
+        {
+            gdl_ast_node_free(children[i], user_data);
+        }
+        return;
+    }
+
+    gdl_ast_node_t * wrap_node = gdl_ast_node_alloc(ctx, GDL_AST_NODE_TYPE_WRAP_CALL);
+    if (wrap_node == NULL)
+    {
+        epc_ast_builder_set_error(ctx, "Failed to allocate wrap call node.");
+        for (int i = 0; i < count; ++i)
+        {
+            gdl_ast_node_free(children[i], user_data);
+        }
+        return;
+    }
+
+    wrap_node->data.wrap_call.expr = expr_node;
+    wrap_node->data.wrap_call.callbacks_name = callbacks_node->data.identifier_ref.name;
+    callbacks_node->data.identifier_ref.name = NULL; // Transfer ownership
+    gdl_ast_node_free(callbacks_node, user_data);
+    wrap_node->data.wrap_call.parser_data_name = parser_data_node->data.identifier_ref.name;
+    parser_data_node->data.identifier_ref.name = NULL; // Transfer ownership
+    gdl_ast_node_free(parser_data_node, user_data);
+
+    epc_ast_push(ctx, wrap_node);
+}
 
 // --- Registry Initialization ---
 void
@@ -1467,7 +1747,7 @@ gdl_ast_hook_registry_init(epc_ast_hook_registry_t * registry, void * user_data)
 
     epc_ast_hook_registry_set_free_node(registry, gdl_ast_node_free);
 #ifdef AST_DEBUG
-   epc_ast_hook_registry_set_enter_node(registry, handle_node_entry);
+    epc_ast_hook_registry_set_enter_node(registry, handle_node_entry);
 #endif
     // Terminal actions
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_IDENTIFIER_REF, handle_create_identifier_ref);
@@ -1475,19 +1755,27 @@ gdl_ast_hook_registry_init(epc_ast_hook_registry_t * registry, void * user_data)
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_CHAR_LITERAL, handle_create_char_literal);
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_NUMBER_LITERAL, handle_create_number_literal);
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_RAW_CHAR_LITERAL, handle_create_raw_char_literal);
-    epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_REPETITION_OPERATOR, handle_create_repetition_operator);
-    epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_KEYWORD, handle_create_keyword); // New handler for keywords
+    epc_ast_hook_registry_set_action(
+        registry, GDL_AST_ACTION_CREATE_REPETITION_OPERATOR, handle_create_repetition_operator
+    );
+    epc_ast_hook_registry_set_action(
+        registry, GDL_AST_ACTION_CREATE_KEYWORD, handle_create_keyword
+    ); // New handler for keywords
 
     // Composite actions
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_PROGRAM, handle_create_program);
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_RULE_DEFINITION, handle_create_rule_definition);
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_CHAR_RANGE, handle_create_char_range);
-    epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_EXPRESSION_FACTOR, handle_create_expression_factor);
+    epc_ast_hook_registry_set_action(
+        registry, GDL_AST_ACTION_CREATE_EXPRESSION_FACTOR, handle_create_expression_factor
+    );
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_SEQUENCE, handle_create_sequence);
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_ALTERNATIVE, handle_create_alternative);
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_OPTIONAL, handle_create_optional_expression);
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_SEMANTIC_ACTION, handle_create_semantic_action);
-    epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_OPTIONAL_SEMANTIC_ACTION, handle_create_optional_semantic_action);
+    epc_ast_hook_registry_set_action(
+        registry, GDL_AST_ACTION_CREATE_OPTIONAL_SEMANTIC_ACTION, handle_create_optional_semantic_action
+    );
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_TERMINAL, handle_create_terminal);
 
     // Combinator calls
@@ -1503,4 +1791,6 @@ gdl_ast_hook_registry_init(epc_ast_hook_registry_t * registry, void * user_data)
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_CHAINL1_CALL, handle_create_chainl1_call);
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_CHAINR1_CALL, handle_create_chainr1_call);
     epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_FAIL_CALL, handle_create_fail_call);
+    epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_SATISFY_CALL, handle_create_satisfy_call);
+    epc_ast_hook_registry_set_action(registry, GDL_AST_ACTION_CREATE_WRAP_CALL, handle_create_wrap_call);
 }

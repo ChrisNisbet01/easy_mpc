@@ -418,6 +418,8 @@ traverse_expression_for_references(
     case GDL_AST_NODE_TYPE_RULE_DEFINITION: // Should not happen here
     case GDL_AST_NODE_TYPE_ARGUMENT_LIST:   // Should be handled by FUNCTION_CALL
     case GDL_AST_NODE_TYPE_PLACEHOLDER:
+    case GDL_AST_NODE_TYPE_SATISFY_CALL:
+    case GDL_AST_NODE_TYPE_WRAP_CALL:
         // These nodes do not contain further rule references in this context
         break;
     }
@@ -841,6 +843,7 @@ generate_expression_code(
 
         break;
     }
+
     case GDL_AST_NODE_TYPE_TERMINAL: // Handle generic terminal expressions
         // A TERMINAL node simply wraps another expression (string, char, keyword, identifier_ref)
         // Recurse into its wrapped expression.
@@ -1136,6 +1139,43 @@ generate_expression_code(
             = (expression_node->type == GDL_AST_NODE_TYPE_COMBINATOR_NONEOF) ? "none_of" : "one_of";
         fprintf(source_file, "epc_%s_l(list, %s%s%s, \"%s\")", parser_name, q, expr_name, q, args_str);
 
+        break;
+    }
+
+    case GDL_AST_NODE_TYPE_SATISFY_CALL:
+    {
+        fprintf(source_file, "epc_satisfy_l(list, %s%s%s, ", q, expr_name, q);
+        if (!generate_expression_code(
+                source_file, expression_node->data.satisfy_call.expr, indent_level + 1, rule_list, NULL
+            ))
+        {
+            return false;
+        }
+        fprintf(
+            source_file,
+            ", \"%s\", %s, %s)",
+            expression_node->data.satisfy_call.message,
+            expression_node->data.satisfy_call.predicate_name,
+            expression_node->data.satisfy_call.parser_data_name
+        );
+        break;
+    }
+
+    case GDL_AST_NODE_TYPE_WRAP_CALL:
+    {
+        fprintf(source_file, "epc_wrap_l(list, %s%s%s, ", q, expr_name, q);
+        if (!generate_expression_code(
+                source_file, expression_node->data.wrap_call.expr, indent_level + 1, rule_list, NULL
+            ))
+        {
+            return false;
+        }
+        fprintf(
+            source_file,
+            ", %s, %s)",
+            expression_node->data.wrap_call.callbacks_name,
+            expression_node->data.wrap_call.parser_data_name
+        );
         break;
     }
 

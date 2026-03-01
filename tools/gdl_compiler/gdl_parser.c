@@ -152,6 +152,10 @@ create_gdl_parser(epc_parser_list * l)
     epc_parser_t * p_chainr1 = epc_lexeme_l(l, "chainr1", p_chainr1_raw);
     epc_parser_t * p_skip_raw = epc_string_l(l, "skip", "skip");
     epc_parser_t * p_skip = epc_lexeme_l(l, "skip", p_skip_raw);
+    epc_parser_t * p_satisfy_raw = epc_string_l(l, "satisfy", "satisfy");
+    epc_parser_t * p_satisfy = epc_lexeme_l(l, "satisfy", p_satisfy_raw);
+    epc_parser_t * p_wrap_raw = epc_string_l(l, "wrap", "wrap");
+    epc_parser_t * p_wrap = epc_lexeme_l(l, "wrap", p_wrap_raw);
 
     epc_parser_t * terminal_no_arg_parser = epc_or_l(
         l,
@@ -184,7 +188,7 @@ create_gdl_parser(epc_parser_list * l)
     epc_parser_t * combinator_parser = epc_or_l(
         l,
         "CombinatorKeyword",
-        15,
+        17,
         p_string_raw,
         p_char_range_raw,
         p_none_of_raw,
@@ -199,7 +203,9 @@ create_gdl_parser(epc_parser_list * l)
         p_lexeme_raw,
         p_chainl1_raw,
         p_chainr1_raw,
-        p_skip_raw
+        p_skip_raw,
+        p_satisfy_raw,
+        p_wrap_raw
     );
     epc_parser_set_ast_action(combinator_parser, GDL_AST_ACTION_CREATE_KEYWORD);
 
@@ -324,10 +330,30 @@ create_gdl_parser(epc_parser_list * l)
     epc_parser_t * skip_call = epc_and_l(l, "SkipCall", 4, p_skip, gdl_lparen, gdl_expression_arg, gdl_rparen);
     epc_parser_set_ast_action(skip_call, GDL_AST_ACTION_CREATE_SKIP_CALL);
 
+    epc_parser_t * satisfy_args = epc_and_l(
+        l,
+        "SatisfyArgs",
+        7,
+        gdl_expression_arg,
+        gdl_comma,
+        gdl_string_literal,
+        gdl_comma,
+        gdl_identifier,
+        gdl_comma,
+        gdl_identifier
+    );
+    epc_parser_t * satisfy_call = epc_and_l(l, "SatisfyCall", 4, p_satisfy, gdl_lparen, satisfy_args, gdl_rparen);
+    epc_parser_set_ast_action(satisfy_call, GDL_AST_ACTION_CREATE_SATISFY_CALL);
+
+    epc_parser_t * wrap_args
+        = epc_and_l(l, "WrapArgs", 5, gdl_expression_arg, gdl_comma, gdl_identifier, gdl_comma, gdl_identifier);
+    epc_parser_t * wrap_call = epc_and_l(l, "WrapCall", 4, p_wrap, gdl_lparen, wrap_args, gdl_rparen);
+    epc_parser_set_ast_action(wrap_call, GDL_AST_ACTION_CREATE_WRAP_CALL);
+
     epc_parser_t * gdl_combinator_call = epc_or_l(
         l,
         "CombinatorCall",
-        12,
+        14,
         none_of_call,
         count_call,
         between_call,
@@ -339,7 +365,9 @@ create_gdl_parser(epc_parser_list * l)
         lexeme_call,
         chainl1_call,
         chainr1_call,
-        skip_call
+        skip_call,
+        satisfy_call,
+        wrap_call
     );
 
     // PrimaryExpression: terminal | char_range | combinator_call | '(' definition_expression ')'

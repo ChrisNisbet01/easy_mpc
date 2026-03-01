@@ -1,0 +1,2 @@
+WrapRule = wrap(any, wrap_cbs, wrap_data);
+ComplexWrapRule = wrap(satisfy(any, "satisfied", satisfy_cb, satisfy_data), more_wrap_cbs, other_wrap_data);

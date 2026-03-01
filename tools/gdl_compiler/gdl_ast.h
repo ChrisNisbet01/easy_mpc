@@ -4,8 +4,7 @@
 #include <stddef.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 // Define GDL-specific AST semantic actions
@@ -40,6 +39,8 @@ typedef enum epc_ast_user_defined_action_gdl
     GDL_AST_ACTION_CREATE_KEYWORD,
     GDL_AST_ACTION_CREATE_TERMINAL,
     GDL_AST_ACTION_CREATE_FAIL_CALL,
+    GDL_AST_ACTION_CREATE_SATISFY_CALL,
+    GDL_AST_ACTION_CREATE_WRAP_CALL,
     GDL_AST_ACTION_MAX,
 } epc_ast_user_defined_action_gdl;
 
@@ -78,6 +79,8 @@ typedef enum
     GDL_AST_NODE_TYPE_ALTERNATIVE,
     GDL_AST_NODE_TYPE_OPTIONAL_EXPRESSION,
     GDL_AST_NODE_TYPE_ARGUMENT_LIST,
+    GDL_AST_NODE_TYPE_SATISFY_CALL,
+    GDL_AST_NODE_TYPE_WRAP_CALL,
 } gdl_ast_node_type_t;
 
 // Forward declaration for gdl_ast_node_t
@@ -217,6 +220,21 @@ typedef struct
     char value;
 } gdl_ast_raw_char_literal_t;
 
+typedef struct
+{
+    gdl_ast_node_t * expr;
+    char const * message;
+    char const * predicate_name;
+    char const * parser_data_name;
+} gdl_ast_satisfy_call_t;
+
+typedef struct
+{
+    gdl_ast_node_t * expr;
+    char const * callbacks_name;
+    char const * parser_data_name;
+} gdl_ast_wrap_call_t;
+
 // Main GDL AST Node structure
 struct gdl_ast_node_t
 {
@@ -247,12 +265,13 @@ struct gdl_ast_node_t
         gdl_ast_alternative_t alternative;
         gdl_ast_optional_expression_t optional;
         gdl_ast_list_t argument_list;
+        gdl_ast_satisfy_call_t satisfy_call;
+        gdl_ast_wrap_call_t wrap_call;
     } data;
 };
 
 // Functions to create AST nodes
 void gdl_ast_node_free(void * node, void * user_data);
-
 
 #ifdef __cplusplus
 }
