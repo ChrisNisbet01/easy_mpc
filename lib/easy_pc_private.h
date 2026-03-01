@@ -140,6 +140,13 @@ typedef struct
     bool consume_comments;
 } lexeme_data_t;
 
+typedef struct
+{
+    epc_parser_t * parser; // A parser to produce a token for the predicate
+    epc_parser_predicate_fn predicate_fn;
+    void * user_ctx; // User-defined context passed to the predicate function
+} predicate_data_t;
+
 typedef enum parser_data_type_t
 {
     PARSER_DATA_TYPE_NONE,
@@ -151,6 +158,7 @@ typedef enum parser_data_type_t
     PARSER_DATA_TYPE_BETWEEN,
     PARSER_DATA_TYPE_DELIMITED,
     PARSER_DATA_TYPE_LEXEME,
+    PARSER_DATA_TYPE_PREDICATE,
 } parser_data_type_t;
 
 typedef struct parser_data_type_st
@@ -166,6 +174,7 @@ typedef struct parser_data_type_st
         between_data_t between;
         delimited_data_t delimited;
         lexeme_data_t lexeme;
+        predicate_data_t predicate;
     };
 } parser_data_type_st;
 

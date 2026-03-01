@@ -1063,6 +1063,77 @@ epc_c_comment_l(epc_parser_list * list, char const * name)
 }
 
 /**
+ * @brief A predicate function type for use with `epc_satisfy()`.
+ * The function should return true if the parser should succeed at the current position, or false if it should fail.
+ * The function is called with the parser instance and a user-defined context pointer, allowing for custom, dynamic
+ * parsing logic that can depend on external state or complex conditions that are not easily expressed with the standard
+ * combinators.
+ * @param token The current CPT node token to evaluate.
+ * @param user_ctx A user-defined context pointer that will be passed to the predicate function. The lifetime of this
+ * pointer must exceed that of the parser.
+ * @return true if the parser should succeed at the current position, or false if it should fail.
+ */
+typedef bool (*epc_parser_predicate_fn)(epc_cpt_node_t * token, void * user_ctx);
+
+/**
+ * @brief Creates a parser that matches if the provided predicate function returns true for the current input position.
+ *
+ * The predicate function is called with the parser instance and a user-defined context pointer. It should
+ * return true if the parser should succeed at the current position, or false if it should fail.
+ *
+ * This allows for custom, dynamic parsing logic that can depend on external state or complex conditions
+ * that are not easily expressed with the standard combinators.
+ *
+ * @param name The name of the parser for debugging/CPT.
+ * @param token_parser A parser that produces a token to be evaluated by the predicate function.
+ * @param message A message to be displayed when the predicate fails.
+ * @param predicate The predicate function to evaluate at parse time.
+ * @param user_ctx A user-defined context pointer that will be passed to the predicate function.
+ *                 The lifetime of this pointer must exceed that of the parser.
+ * @return A new `parser_t` instance, or NULL on error.
+ */
+EASY_PC_API epc_parser_t * epc_satisfy(
+    char const * name,
+    epc_parser_t * token_parser,
+    char const * message,
+    epc_parser_predicate_fn predicate,
+    void * user_ctx
+);
+
+/**
+ * @brief Creates a parser that matches if the provided predicate function returns true for the current input position.
+ *        This is a convenience wrapper for `epc_satisfy()` that automatically adds the created parser to the provided
+ *        `epc_parser_list`.
+ *
+ * The predicate function is called with the parser instance and a user-defined context pointer. It should
+ * return true if the parser should succeed at the current position, or false if it should fail.
+ *
+ * This allows for custom, dynamic parsing logic that can depend on external state or complex conditions
+ * that are not easily expressed with the standard combinators.
+ *
+ * @param list The parser list to add to.
+ * @param name The name of the parser for debugging/CPT.
+ * @param token_parser A parser that produces a token to be evaluated by the predicate function.
+ * @param message A message to be displayed when the predicate fails.
+ * @param predicate The predicate function to evaluate at parse time.
+ * @param user_ctx A user-defined context pointer that will be passed to the predicate function.
+ *                 The lifetime of this pointer must exceed that of the parser.
+ * @return A new `parser_t` instance, or NULL on error.
+ */
+static inline epc_parser_t *
+epc_satisfy_l(
+    epc_parser_list * list,
+    char const * name,
+    epc_parser_t * token_parser,
+    char const * message,
+    epc_parser_predicate_fn predicate,
+    void * user_ctx
+)
+{
+    return epc_parser_list_add(list, epc_satisfy(name, token_parser, message, predicate, user_ctx));
+}
+
+/**
  * @brief Allocates and initializes a new parser object within the grammar's memory context.
  *
  * This function is typically used to create a forward reference to a parser that is needed to
@@ -1133,8 +1204,7 @@ EASY_PC_API void epc_parser_set_ast_action(epc_parser_t * p, int action_type);
  *         context for cleanup.
  *         This session MUST be destroyed with `easy_pc_parse_session_destroy`.
  */
-EASY_PC_API epc_parse_session_t
-epc_parse_str(epc_parser_t * top_parser, char const * input_string);
+EASY_PC_API epc_parse_session_t epc_parse_str(epc_parser_t * top_parser, char const * input_string);
 
 /**
  * @brief Initiates a parsing operation with a given grammar and input file stream.

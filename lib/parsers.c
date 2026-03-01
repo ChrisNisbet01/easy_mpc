@@ -81,6 +81,7 @@ parser_data_free(parser_data_type_st * data)
     case PARSER_DATA_TYPE_BETWEEN:
     case PARSER_DATA_TYPE_DELIMITED:
     case PARSER_DATA_TYPE_LEXEME:
+    case PARSER_DATA_TYPE_PREDICATE:
         /* Nothing to do. */
         break;
 
@@ -3250,6 +3251,7 @@ epc_parser_duplicate(epc_parser_t * const dst, epc_parser_t const * const src)
     case PARSER_DATA_TYPE_BETWEEN:
     case PARSER_DATA_TYPE_DELIMITED:
     case PARSER_DATA_TYPE_LEXEME:
+    case PARSER_DATA_TYPE_PREDICATE:
         dst->data = src->data;
         break;
 
@@ -3270,6 +3272,87 @@ epc_parser_duplicate(epc_parser_t * const dst, epc_parser_t const * const src)
     {
         dst->expected_value = src->expected_value;
     }
+}
+
+static epc_parse_result_t
+psatisfy_parse_fn(epc_parser_t * self, epc_parser_ctx_t * ctx, size_t input_offset)
+{
+    epc_parser_error_t * original_furthest_error = parser_furthest_error_copy(ctx);
+    epc_parse_result_t token_result = parse(self->data.predicate.parser, ctx, input_offset);
+
+    if (token_result.is_error)
+    {
+        parser_furthest_error_restore(ctx, &original_furthest_error);
+        epc_parse_result_t result = epc_parser_error_result(
+            ctx,
+            input_offset,
+            "Failed to match the satisfy token parser",
+            token_result.data.error->expected,
+            token_result.data.error->found
+        );
+        epc_parser_result_cleanup(&token_result);
+
+        return result;
+    }
+    epc_parser_error_free(original_furthest_error);
+
+    if (!self->data.predicate.predicate_fn(token_result.data.success, self->data.predicate.user_ctx))
+    {
+        char found_str[FOUND_BUFFER_SIZE];
+        snprintf(
+            found_str,
+            sizeof(found_str),
+            "token '%.*s'",
+            (int)token_result.data.success->len,
+            token_result.data.success->content
+        );
+        epc_parser_result_cleanup(&token_result);
+
+        epc_parse_result_t result = epc_parser_error_result(
+            ctx, input_offset, "Predicate function returned false", parser_get_expected_str(self), found_str
+        );
+
+        return result;
+    }
+
+    epc_cpt_node_t * node = epc_node_alloc(self, self->tag);
+
+    if (node == NULL)
+    {
+        return epc_parser_error_result(ctx, input_offset, "Memory allocation error", epc_parser_get_name(self), "N/A");
+    }
+
+    node->content = token_result.data.success->content;
+    node->len = token_result.data.success->len;
+    node->semantic_end_offset = token_result.data.success->semantic_end_offset;
+    node->semantic_start_offset = token_result.data.success->semantic_start_offset;
+
+    epc_parser_result_cleanup(&token_result);
+
+    return epc_parser_success_result(node);
+}
+
+EASY_PC_API epc_parser_t *
+epc_satisfy(
+    char const * name,
+    epc_parser_t * token_parser,
+    char const * message_on_failure,
+    epc_parser_predicate_fn predicate,
+    void * user_ctx
+)
+{
+    epc_parser_t * p = epc_parser_allocate(name, "satisfy", psatisfy_parse_fn);
+    if (p == NULL)
+    {
+        return NULL;
+    }
+    p->data.type = PARSER_DATA_TYPE_PREDICATE;
+    p->data.predicate.parser = token_parser;
+    p->data.predicate.predicate_fn = predicate;
+    p->data.predicate.user_ctx = user_ctx;
+    p->expected_value = message_on_failure;
+
+    return p;
 }
 
 void
